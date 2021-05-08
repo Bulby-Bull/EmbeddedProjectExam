@@ -1,5 +1,9 @@
 void connect();
 void disconnect();
 void subscribe();
+void subACK();
 void publish();
+void pubACK();
+void push();
+void pushACK();
 void ping();

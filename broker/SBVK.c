@@ -13,6 +13,7 @@ static int getMessageType(){
 
 void connect(){
 	createPacket();
+	getMessageType();
 }
 
 void disconnect(){
@@ -20,14 +21,34 @@ void disconnect(){
 }
 
 void subscribe(){
-	send();
+	sendPacket();
+}
+
+void subACK(){
+	sendPacket();
 }
 
 void publish(){
-	send();
+	sendPacket();
+}
+
+void pubACK(){
+	sendPacket();
+}
+
+void push(){
+	sendPacket();
+}
+
+void pushACK(){
+	sendPacket();
 }
 
 void ping(){
-	send();
+	sendPacket();
 }
+
+
+
+
 
