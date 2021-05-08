@@ -5,8 +5,6 @@
 
 #include "sys/log.h"
 
-static struct simple_udp_connection;
-
 void connect(struct simple_udp_connection *udp_conn);
 void connACK();
 void disconnect();
