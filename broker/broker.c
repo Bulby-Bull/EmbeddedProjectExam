@@ -16,9 +16,6 @@
 
 static struct simple_udp_connection udp_conn;
 
-PROCESS(udp_server_process, "UDP server");
-AUTOSTART_PROCESSES(&udp_server_process);
-/*---------------------------------------------------------------------------*/
 static void
 udp_rx_callback(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
@@ -37,6 +34,10 @@ udp_rx_callback(struct simple_udp_connection *c,
   simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
 #endif /* WITH_SERVER_REPLY */
 }
+
+PROCESS(udp_server_process, "UDP server");
+AUTOSTART_PROCESSES(&udp_server_process);
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_server_process, ev, data)
 {
@@ -48,6 +49,8 @@ PROCESS_THREAD(udp_server_process, ev, data)
   /* Initialize UDP connection */
   simple_udp_register(&udp_conn, UDP_SERVER_PORT, NULL,
                       UDP_CLIENT_PORT, udp_rx_callback);
+                      
+  connect(&udp_conn);
 
   PROCESS_END();
 }
