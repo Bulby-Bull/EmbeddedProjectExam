@@ -1,4 +1,4 @@
-#include "SBVK.h"
+#include "../SBVK.h"
 
 #include "contiki.h"
 #include "net/routing/routing.h"
@@ -54,7 +54,7 @@ PROCESS_THREAD(udp_server_process, ev, data)
   //iptest = "fd00::c30:0:0:1";
   //simple_udp_sendto(&udp_conn, "MegaTest", 100, iptest);
   LOG_INFO_("Sending mess \n");                   
-  connect(&udp_conn);
+  //connect(&udp_conn);
   LOG_INFO_("OK paquet sent \n");  
 
   PROCESS_END();

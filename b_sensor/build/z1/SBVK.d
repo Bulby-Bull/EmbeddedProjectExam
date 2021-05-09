@@ -1,4 +1,4 @@
-build/z1/obj/SBVK.o: SBVK.c ../../os/contiki.h \
+build/z1/obj/../SBVK.o: ../SBVK.c ../../os/contiki.h \
  ../../arch/platform/z1/./contiki-conf.h project-conf.h \
  ../../arch/platform/z1/./z1-def.h ../../arch/cpu/msp430/./msp430-def.h \
  ../../arch/cpu/msp430/./msp430-conf.h ../../os/contiki-default-conf.h \
@@ -18,7 +18,7 @@ build/z1/obj/SBVK.o: SBVK.c ../../os/contiki.h \
  ../../os/net/ipv6/uip-ds6-route.h ../../os/lib/list.h \
  ../../os/net/ipv6/uip-sr.h ../../os/net/ipv6/simple-udp.h \
  ../../os/sys/log.h ../../os/sys/log-conf.h
-SBVK.c ../../os/contiki.h :
+../SBVK.c ../../os/contiki.h :
  ../../arch/platform/z1/./contiki-conf.h project-conf.h :
  ../../arch/platform/z1/./z1-def.h ../../arch/cpu/msp430/./msp430-def.h :
  ../../arch/cpu/msp430/./msp430-conf.h ../../os/contiki-default-conf.h :
