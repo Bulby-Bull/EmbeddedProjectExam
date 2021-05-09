@@ -39,9 +39,7 @@ udp_rx_callback(struct simple_udp_connection *c,
     received_struct_ptr = (struct Packet*) data;
     struct Packet packetRcv;
     packetRcv = *received_struct_ptr;
-    
-    int msgType = getMessageType(packetRcv);
-  LOG_INFO("MessageType = %i",msgType);
+    handleMessage(packetRcv,&udp_conn,sender_addr);
 #if LLSEC802154_CONF_ENABLED
   LOG_INFO_(" LLSEC LV:%d", uipbuf_get_attr(UIPBUF_ATTR_LLSEC_LEVEL));
 #endif

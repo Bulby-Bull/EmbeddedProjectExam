@@ -16,42 +16,7 @@
 static struct simple_udp_connection udp_conn;
 //const uip_ipaddr_t *iptest;
 
-static void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
-	int msgType = getMessageType(packetRcv);
-  	LOG_INFO("MessageType = %i",msgType);
-	switch (msgType){
-		case 1://publish();
-			break;
-		case 2://subscribe();
-			break;
-		case 3://disconnect();
-			break;
-		case 4: //publish();
-			break;
-		case CONNECT://PUBACK();
-			connACK(udp_conn,destAddr);
-			break;
-		case 6://connect(data, datalen);
-			break;
-		case 7://SUBACK();
-			break;
-		case 8://UNSUB();
-			break;
-		case 9://UNSUBACK();
-			break;
-		case 10://ping();
-			break;
-		case 11://PINGRESP();
-			break;
-		case 12://push();
-			break;
-		case 13://pushack();
-			break;
 
-		default:
-			break;
-	}
-}
 
 
 static void

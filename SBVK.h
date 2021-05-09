@@ -19,3 +19,4 @@ void push();
 void pushACK();
 void pingreq();
 void pingresp();
+void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);

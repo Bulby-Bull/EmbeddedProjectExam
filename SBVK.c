@@ -27,32 +27,11 @@ static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned i
 	return packet;
 }
 
-//Because of in Cooja Calloc is not implemented in stdlib, we have to create it ourself
-void * calloc (size_t a, size_t b){
-	return malloc(a*b);
-}
 
-/* Convert Structures in string to be sent in udp_send */
-/* url source: https://stackoverflow.com/questions/29762048/c-structure-to-string */
-static char* convertPacketToString(struct Packet packet){
-	/* get lenght of string required to hold struct values */
-        size_t len = 0;
-        len = snprintf (NULL, len, "%d,%d,%d,%d,%s,%s", packet.header.mst, packet.header.qos, packet.header.rl, packet.header.test, packet.header.headerOption, packet.payload);
-        
-        /* allocate/validate string to hold all values (+1 to null-terminate) */
-        char *packetstr = calloc (1, sizeof *packetstr * len + 1);
-
-        /* write/validate struct values to apstr */
-        snprintf (packetstr, len + 1, "%d,%d,%d,%d,%s,%s", packet.header.mst, packet.header.qos, packet.header.rl, packet.header.test, packet.header.headerOption, packet.payload);
-	
-	return packetstr;
-}
 
 /* Send a packet to a device or a broker, called by connect, connACK, push, ... */
 static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
-	char *packetStr = convertPacketToString(packet);
 	simple_udp_sendto(udp_conn,&packet,  sizeof(packet),destAddr);
-	free(packetStr);
 	return 0;
 }
 
@@ -114,6 +93,7 @@ void push(){
 	//sendPacket();
 }
 
+
 /* Return an acknowledge when the information/command is received */
 void pushACK(){
 	//sendPacket();
@@ -128,6 +108,49 @@ void pingreq(){
 /* Respond to a ping */
 void pingresp(){
 	//sendPacket();
+}
+
+#define LOG_MODULE "App"
+#define LOG_LEVEL LOG_LEVEL_INFO
+
+void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	int msgType = getMessageType(packetRcv);
+  	LOG_INFO("MessageType = %i",msgType);
+	switch (msgType){
+		case HELLO:
+			break;
+		case PUBLISH://publish();
+			break;
+		case SUBSCRIBE://subscribe();
+			break;
+		case DISCONNECT://disconnect();
+			break;
+		case PUBACK: //publish();
+			break;
+		case CONNECT://PUBACK();
+			LOG_INFO("Connect received response with connack");
+			connACK(udp_conn,destAddr);
+			break;
+		case CONNACK://connect(data, datalen);
+			break;
+		case SUBACK://SUBACK();
+			break;
+		case UNSUB://UNSUB();
+			break;
+		case UNSUBACK://UNSUBACK();
+			break;
+		case PINGREQ://ping();
+			break;
+		case PINGRESP://PINGRESP();
+			break;
+		case PUSH://push();
+			break;
+		case PUSHACK://pushack();
+			break;
+
+		default:
+			break;
+	}
 }
 
 
