@@ -33,8 +33,15 @@ udp_rx_callback(struct simple_udp_connection *c,
          uint16_t datalen)
 {
 
-  LOG_INFO("Received response '%.*s' from ", datalen, (char *) data);
+  LOG_INFO("Received response '%.*s' from \n", datalen, (char *) data);
   LOG_INFO_6ADDR(sender_addr);
+  struct Packet* received_struct_ptr;
+    received_struct_ptr = (struct Packet*) data;
+    struct Packet packetRcv;
+    packetRcv = *received_struct_ptr;
+    
+    int msgType = getMessageType(packetRcv);
+  LOG_INFO("MessageType = %i",msgType);
 #if LLSEC802154_CONF_ENABLED
   LOG_INFO_(" LLSEC LV:%d", uipbuf_get_attr(UIPBUF_ATTR_LLSEC_LEVEL));
 #endif
@@ -46,7 +53,7 @@ PROCESS_THREAD(udp_client_process, ev, data)
 {
   static struct etimer periodic_timer;
   static unsigned count;
-  static char str[32];
+  //static char str[32];
   uip_ipaddr_t dest_ipaddr;
 
   PROCESS_BEGIN();
@@ -64,8 +71,11 @@ PROCESS_THREAD(udp_client_process, ev, data)
       LOG_INFO("Sending request %u to ", count);
       LOG_INFO_6ADDR(&dest_ipaddr);
       LOG_INFO_("\n");
-      snprintf(str, sizeof(str), "hello %d", count);
-      simple_udp_sendto(&udp_conn, str, strlen(str), &dest_ipaddr);
+      LOG_INFO("Sending CONNECT  ");
+      connect(&udp_conn,&dest_ipaddr);
+      
+      //snprintf(str, sizeof(str), "hello %d", count);
+      //simple_udp_sendto(&udp_conn, str, strlen(str), &dest_ipaddr);
       count++;
     } else {
       LOG_INFO("Not reachable yet\n");

@@ -5,32 +5,11 @@
 #include "net/routing/routing.h"
 #include "net/netstack.h"
 #include "net/ipv6/simple-udp.h"
-
+#include "structure.h"
 #include "sys/log.h"
 
 
-//Structure of the header inside the packet
-struct Header
-{
-    unsigned int mst : 4;
-    unsigned int qos : 1;
-    unsigned int rl: 8;    
-    unsigned int test: 3; 
-    char headerOption[20];
-};
 
-//Structure of a packet
-struct Packet
-{
-    struct Header header;
-    char payload[50];
-};
-
-//Enumeration for message type (MST)
-enum MESSAGE_TYPE { RESERVED = 0, PUBLISH = 1, SUBSCRIBE=2, DISCONNECT = 3 , PUBACK = 4, CONNECT = 5, CONNACK = 6, SUBACK = 7,UNSUB = 8,UNSUBACK = 9, PINGREQ = 10, PINGRESP = 11,PUSH = 12 , PUSHACK = 13};
-
-//Enumeration for both QoS
-enum QOS { UNRELIABLE = 0, RELIABLE = 1};
 
 /* Create a packet in function of the command (push, connect, ...) */
 static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
@@ -70,28 +49,30 @@ static char* convertPacketToString(struct Packet packet){
 }
 
 /* Send a packet to a device or a broker, called by connect, connACK, push, ... */
-static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_conn){
-	simple_udp_send(udp_conn, convertPacketToString(packet), 100);
+static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	char *packetStr = convertPacketToString(packet);
+	simple_udp_sendto(udp_conn,&packet,  sizeof(packet),destAddr);
+	free(packetStr);
 	return 0;
 }
 
 //When we receive a paquet, we split the paquet and we check which is the type of message
-static int getMessageType(){
-	return 0;
+ int getMessageType(struct Packet packet){
+	return packet.header.mst;
 }
 
 
 /* Initiate a connection to a remote device or broker */
-void connect(struct simple_udp_connection *udp_conn){
+void connect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	struct Packet packet = createPacket(CONNECT, UNRELIABLE, 0, 0, "CONNECT", "testpayload");
 	
-	sendPacket(packet, udp_conn);
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Return an acknowledge after a CONNECTION paquet */
-void connACK(){
-	getMessageType();
-	//createPacket();
+void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	struct Packet packet = createPacket(CONNACK, UNRELIABLE, 0, 0, "CONNACK", "testpayload");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Finish a transmission (a client give the network) */

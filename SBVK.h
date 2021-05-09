@@ -2,11 +2,12 @@
 #include "net/routing/routing.h"
 #include "net/netstack.h"
 #include "net/ipv6/simple-udp.h"
-
+#include "structure.h"
 #include "sys/log.h"
 
-void connect(struct simple_udp_connection *udp_conn);
-void connACK();
+void connect(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr);
+int getMessageType(struct Packet packet);
+void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void disconnect();
 void subscribe();
 void subACK();

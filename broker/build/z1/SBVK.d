@@ -16,7 +16,7 @@ build/z1/obj/../SBVK.o: ../SBVK.c ../../os/contiki.h \
  ../../os/net/nbr-table.h ../../os/net/netstack.h ../../os/net/mac/mac.h \
  ../../os/dev/radio.h ../../os/net/mac/framer/framer.h \
  ../../os/net/ipv6/uip-ds6-route.h ../../os/lib/list.h \
- ../../os/net/ipv6/uip-sr.h ../../os/net/ipv6/simple-udp.h \
+ ../../os/net/ipv6/uip-sr.h ../../os/net/ipv6/simple-udp.h ../structure.h \
  ../../os/sys/log.h ../../os/sys/log-conf.h
 ../SBVK.c ../../os/contiki.h :
  ../../arch/platform/z1/./contiki-conf.h project-conf.h :
@@ -36,5 +36,5 @@ build/z1/obj/../SBVK.o: ../SBVK.c ../../os/contiki.h \
  ../../os/net/nbr-table.h ../../os/net/netstack.h ../../os/net/mac/mac.h :
  ../../os/dev/radio.h ../../os/net/mac/framer/framer.h :
  ../../os/net/ipv6/uip-ds6-route.h ../../os/lib/list.h :
- ../../os/net/ipv6/uip-sr.h ../../os/net/ipv6/simple-udp.h :
+ ../../os/net/ipv6/uip-sr.h ../../os/net/ipv6/simple-udp.h ../structure.h :
  ../../os/sys/log.h ../../os/sys/log-conf.h :
