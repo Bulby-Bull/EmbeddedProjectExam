@@ -9,7 +9,8 @@
 #include "sys/log.h"
 
 
-
+#define LOG_MODULE "App"
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 /* Create a packet in function of the command (push, connect, ...) */
 static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
@@ -42,24 +43,35 @@ static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_co
 
 /* Initiate a connection to a remote device or broker */
 void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool init){
+	
+	
 	struct Packet packet;
 	if (init){
+	LOG_INFO("Send hello packet to ");
 	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
 	}else{
+	LOG_INFO("Send response hello packet to ");
 	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "response", "testpayload");
 	}
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Initiate a connection to a remote device or broker */
 void connect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	LOG_INFO("Send connect packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
 	struct Packet packet = createPacket(CONNECT, UNRELIABLE, 0, 0, "CONNECT", "testpayload");
-	
 	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Return an acknowledge after a CONNECTION paquet */
 void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	LOG_INFO("Send connack packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
 	struct Packet packet = createPacket(CONNACK, UNRELIABLE, 0, 0, "CONNACK", "testpayload");
 	sendPacket(packet, udp_conn,destAddr);
 }
@@ -120,8 +132,7 @@ void pingresp(){
 	//sendPacket();
 }
 
-#define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_INFO
+
 
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	int msgType = getMessageType(packetRcv);

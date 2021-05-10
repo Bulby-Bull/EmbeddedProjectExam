@@ -28,7 +28,7 @@ udp_rx_callback(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  LOG_INFO("Received request '%.*s \n' from ", datalen, (char *) data);
+  LOG_INFO("Received request from ");
   LOG_INFO_6ADDR(sender_addr);
   LOG_INFO_("\n");
   struct Packet* received_struct_ptr;
@@ -39,8 +39,8 @@ udp_rx_callback(struct simple_udp_connection *c,
   
 #if WITH_SERVER_REPLY
   /* send back the same string to the client as an echo reply */
-  LOG_INFO("Sending response.\n");
-  simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
+  //LOG_INFO("Sending response.\n");
+  //simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
 #endif /* WITH_SERVER_REPLY */
 }
 
