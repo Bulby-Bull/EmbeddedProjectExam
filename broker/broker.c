@@ -59,12 +59,7 @@ PROCESS_THREAD(udp_server_process, ev, data)
   /* Initialize UDP connection */
   simple_udp_register(&udp_conn, UDP_SERVER_PORT, NULL,
                       UDP_CLIENT_PORT, udp_rx_callback);
-                  
-  //iptest = "fd00::c30:0:0:1";
-  //simple_udp_sendto(&udp_conn, "MegaTest", 100, iptest);
-  LOG_INFO_("Sending mess \n");                   
-  //connect(&udp_conn);
-  LOG_INFO_("OK paquet sent \n");  
+
 
   PROCESS_END();
 }
