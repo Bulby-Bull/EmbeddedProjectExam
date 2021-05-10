@@ -8,6 +8,7 @@
 void connect(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr);
 int getMessageType(struct Packet packet);
 void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr,bool init);
 void disconnect();
 void subscribe();
 void subACK();

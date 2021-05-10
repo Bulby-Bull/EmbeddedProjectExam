@@ -33,8 +33,9 @@ udp_rx_callback(struct simple_udp_connection *c,
          uint16_t datalen)
 {
 
-  LOG_INFO("Received response '%.*s' from \n", datalen, (char *) data);
+  LOG_INFO("Received response '%.*s' from ", datalen, (char *) data);
   LOG_INFO_6ADDR(sender_addr);
+  LOG_INFO("\n");
   struct Packet* received_struct_ptr;
     received_struct_ptr = (struct Packet*) data;
     struct Packet packetRcv;
@@ -66,11 +67,10 @@ PROCESS_THREAD(udp_client_process, ev, data)
 
     if(NETSTACK_ROUTING.node_is_reachable() && NETSTACK_ROUTING.get_root_ipaddr(&dest_ipaddr)) {
       /* Send to DAG root */
-      LOG_INFO("Sending request %u to ", count);
+      LOG_INFO("Sending hello request %u to ", count);
       LOG_INFO_6ADDR(&dest_ipaddr);
       LOG_INFO_("\n");
-      LOG_INFO("Sending CONNECT  ");
-      connect(&udp_conn,&dest_ipaddr);
+      hello(&udp_conn,&dest_ipaddr,1);
       
       //snprintf(str, sizeof(str), "hello %d", count);
       //simple_udp_sendto(&udp_conn, str, strlen(str), &dest_ipaddr);

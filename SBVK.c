@@ -40,6 +40,16 @@ static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_co
 	return packet.header.mst;
 }
 
+/* Initiate a connection to a remote device or broker */
+void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool init){
+	struct Packet packet;
+	if (init){
+	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
+	}else{
+	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "response", "testpayload");
+	}
+	sendPacket(packet, udp_conn,destAddr);
+}
 
 /* Initiate a connection to a remote device or broker */
 void connect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
@@ -115,9 +125,17 @@ void pingresp(){
 
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	int msgType = getMessageType(packetRcv);
-  	LOG_INFO("MessageType = %i",msgType);
+  	LOG_INFO("MessageType = %i\n",msgType);
 	switch (msgType){
 		case HELLO:
+			if(strcmp(packetRcv.header.headerOption ,"init")==0) {
+				LOG_INFO("Hello received response with Hello\n");
+				hello(udp_conn,destAddr,0);
+			}else{
+				LOG_INFO("Hello response received, response with connect\n");
+				connect(udp_conn,destAddr);
+			}
+			
 			break;
 		case PUBLISH://publish();
 			break;

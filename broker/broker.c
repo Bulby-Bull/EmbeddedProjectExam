@@ -30,12 +30,13 @@ udp_rx_callback(struct simple_udp_connection *c,
 {
   LOG_INFO("Received request '%.*s \n' from ", datalen, (char *) data);
   LOG_INFO_6ADDR(sender_addr);
+  LOG_INFO_("\n");
   struct Packet* received_struct_ptr;
     received_struct_ptr = (struct Packet*) data;
     struct Packet packetRcv;
     packetRcv = *received_struct_ptr;
     handleMessage(packetRcv,&udp_conn,sender_addr);
-  LOG_INFO_("\n");
+  
 #if WITH_SERVER_REPLY
   /* send back the same string to the client as an echo reply */
   LOG_INFO("Sending response.\n");
