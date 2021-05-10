@@ -7,6 +7,7 @@
 #include "net/ipv6/simple-udp.h"
 #include "structure.h"
 #include "sys/log.h"
+#include "random.h"
 
 
 #define LOG_MODULE "App"
@@ -30,8 +31,64 @@ static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned i
 
 
 
+	bool ackRcv;
+	int ackTypeWanted;
+	struct simple_udp_connection *udp_connAck;
+	const uip_ipaddr_t *destAddrAck;
+	struct Packet packetAck;
+	
+#define SEND_INTERVAL		  (5 * CLOCK_SECOND)
+PROCESS(ackThread, "Check ack");
+PROCESS_THREAD(ackThread, ev, data)
+	{
+	  static struct etimer periodic_timer;
+	  //static unsigned count;
+	  //const uip_ipaddr_t *destAddrCast = data;
+	  PROCESS_BEGIN();
+	  etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
+	  while(1) {
+	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+
+	    if(!ackRcv){
+	    	LOG_INFO("ACK NOT received, resend to ");
+	    	LOG_INFO_("Message type %i ",packetAck.header.mst );
+	    	LOG_INFO_6ADDR(destAddrAck);
+      		LOG_INFO_("\n");
+	    	simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),destAddrAck);
+	    }else{
+	    	//free(destAddrAck);
+	    	PROCESS_EXIT();
+	    }
+
+	    /* Add some jitter */
+	    etimer_set(&periodic_timer, SEND_INTERVAL
+	      - CLOCK_SECOND + (random_rand() % (2 * CLOCK_SECOND)));
+	  }
+
+  	PROCESS_END();
+	}
+
+
+
+int qosThread(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	udp_connAck = udp_conn;
+	LOG_INFO("Change qos addresse to : ");
+	    	LOG_INFO_6ADDR(destAddr);
+      		LOG_INFO_("\n");
+      	packetAck = packet;
+	destAddrAck = destAddr;
+	process_start(&ackThread, &destAddr);
+	
+	return 0;
+}
+
 /* Send a packet to a device or a broker, called by connect, connACK, push, ... */
 static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	if(packet.header.qos){
+		ackRcv = false;
+		ackTypeWanted = packet.header.mst+1;
+		qosThread(packet, udp_conn, destAddr);
+	}
 	simple_udp_sendto(udp_conn,&packet,  sizeof(packet),destAddr);
 	return 0;
 }
@@ -40,6 +97,7 @@ static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_co
  int getMessageType(struct Packet packet){
 	return packet.header.mst;
 }
+
 
 /* Initiate a connection to a remote device or broker */
 void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool init){
@@ -63,7 +121,7 @@ void connect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 	LOG_INFO("Send connect packet to ");
 	LOG_INFO_6ADDR(destAddr);
       	LOG_INFO_("\n");
-	struct Packet packet = createPacket(CONNECT, UNRELIABLE, 0, 0, "CONNECT", "testpayload");
+	struct Packet packet = createPacket(CONNECT, RELIABLE, 0, 0, "CONNECT", "testpayload");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -136,7 +194,11 @@ void pingresp(){
 
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	int msgType = getMessageType(packetRcv);
-  	LOG_INFO("MessageType = %i\n",msgType);
+  	LOG_INFO("Received msg with MessageType = %i\n",msgType);
+  	if(!ackRcv && msgType == ackTypeWanted){
+  		LOG_INFO("ACK Well received\n");
+  		ackRcv=true;
+  	}
 	switch (msgType){
 		case HELLO:
 			if(strcmp(packetRcv.header.headerOption ,"init")==0) {
@@ -157,8 +219,8 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		case PUBACK: //publish();
 			break;
 		case CONNECT://PUBACK();
-			LOG_INFO("Connect received response with connack");
-			connACK(udp_conn,destAddr);
+			LOG_INFO("Connect received response with connack\n");
+			//connACK(udp_conn,destAddr);
 			break;
 		case CONNACK://connect(data, datalen);
 			break;

@@ -66,6 +66,7 @@ PROCESS_THREAD(udp_client_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
     if(NETSTACK_ROUTING.node_is_reachable() && NETSTACK_ROUTING.get_root_ipaddr(&dest_ipaddr)) {
+    //Check si connection active (avec un ping) sinon relancé un hello ! 
       /* Send to DAG root */
       LOG_INFO("Sending hello request %u to ", count);
       LOG_INFO_6ADDR(&dest_ipaddr);
