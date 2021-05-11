@@ -9,7 +9,7 @@ void connect(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAdd
 int getMessageType(struct Packet packet);
 void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr,bool init);
-void disconnect();
+void disconnect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void subscribe();
 void subACK();
 void unSUB();
@@ -18,6 +18,9 @@ void publish(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 void pubACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void push();
 void pushACK();
+bool isConnected();
+void startPingThread(struct simple_udp_connection *udp_conn,	const uip_ipaddr_t *destAddr);
+void stopPingThread();
 void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);

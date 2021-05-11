@@ -12,6 +12,7 @@
 
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_INFO
+bool connected=false;
 
 /* Create a packet in function of the command (push, connect, ...) */
 static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
@@ -137,8 +138,13 @@ void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 }
 
 /* Finish a transmission (a client give the network) */
-void disconnect(){
-	//createPacket();
+void disconnect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+    LOG_INFO("Send disconnect packet to ");
+    LOG_INFO_6ADDR(destAddr);
+    LOG_INFO("\n");
+    struct Packet packet = createPacket(DISCONNECT, UNRELIABLE, 0, 0, "DISCONNECT", "testpayload");
+    sendPacket(packet, udp_conn,destAddr);
+ 
 }
 
 /* Subscribe to a topic */
@@ -191,6 +197,12 @@ void pushACK(){
 	//sendPacket();
 }
 
+/*---------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------*/
+
+
+
 
 /* Make a ping to check the connection */
 void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){ 
@@ -201,6 +213,7 @@ void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 	sendPacket(packet, udp_conn,destAddr);
 }
 
+	
 /* Respond to a ping */
 void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	LOG_INFO("Send pingresp packet to ");
@@ -208,6 +221,64 @@ void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAdd
       	LOG_INFO_("\n");
 	struct Packet packet = createPacket(PINGRESP, UNRELIABLE, 0, 0, "PINGRESP", "pingRespTestPayload");
 	sendPacket(packet, udp_conn,destAddr); 
+}
+
+PROCESS(wait_ping_process, "WAIT client"); 
+
+	//bool ackRcv;
+	//int ackTypeWanted;
+	struct simple_udp_connection *udp_connPing;
+	uip_ipaddr_t destAddrPing;
+	struct Packet packetAck;
+	int countPing;
+
+PROCESS_THREAD(wait_ping_process, ev, data){
+	PROCESS_BEGIN(); 
+	 countPing = 0;
+	//const struct PingReq *pingReq =  data;
+	 //const struct PingReq pingReqs = *pingReq;
+	//const uip_ipaddr_t *sender_addr = &(pingReqs.dest_ipaddr);
+	LOG_INFO("PING wait_ping_process " );
+	LOG_INFO_6ADDR(&destAddrPing); 
+	LOG_INFO("\n"); 	
+	static struct etimer timer;
+	
+	//pingreq(udp_connPing,  &destAddrPing);
+	etimer_set(&timer, CLOCK_SECOND*10); //Ping each 10 seconds
+	//pingreq(&udp_conn,  sender_addr);
+	
+  	
+  	while(1 && countPing < 5){
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer)); 
+ 		LOG_INFO("Send ping number %i to ", countPing );
+		LOG_INFO_6ADDR(&destAddrPing); 
+		LOG_INFO("\n"); 
+		pingreq(udp_connPing,  &destAddrPing);
+		countPing++;
+		
+    		etimer_reset(&timer);
+    		
+	}
+	disconnect(udp_connPing, &destAddrPing);
+  	PROCESS_END();
+
+
+} 
+
+void startPingThread(struct simple_udp_connection *udp_conn,	const uip_ipaddr_t *destAddr){
+	udp_connPing = udp_conn;
+	destAddrPing = *destAddr;
+	LOG_INFO("Ping should be to " );
+		LOG_INFO_6ADDR(&destAddrPing); 
+		LOG_INFO("\n"); 
+	process_start(&wait_ping_process,NULL);//START/RESTART PROCESS PING
+}
+
+void stopPingThread(){
+	process_exit(&wait_ping_process); //STOP PROCESS PING
+}
+bool isConnected(){
+	return connected;
 }
 
 static unsigned count =0;
@@ -248,6 +319,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		case SUBSCRIBE://subscribe();
 			break;
 		case DISCONNECT://disconnect();
+			connected = false;
 			break;
 		case PUBACK:
 			LOG_INFO("PUBACK received \n");
@@ -264,6 +336,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			
 			break;
 		case CONNACK://connect(data, datalen);
+			connected = true;
 			break;
 		case SUBACK://SUBACK();
 			break;
@@ -279,6 +352,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			break;
 		case PINGRESP://PINGRESP();
 			LOG_INFO("PING response received\n");
+			stopPingThread();
 			break;
 		case PUSH://push();
 			break;

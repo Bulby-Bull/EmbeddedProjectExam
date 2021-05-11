@@ -17,42 +17,13 @@
 
 static struct simple_udp_connection udp_conn;
 
-
-
-/*---------------------------------------------------------------------------*/
 PROCESS(udp_client_process, "UDP client");
+
 AUTOSTART_PROCESSES(&udp_client_process);
 
-AUTOSTART_PROCESSES(&udp_client_process ); 
-/*---------------------------------------------------------------------------*/
+//AUTOSTART_PROCESSES(&udp_client_process ); 
 
-
-PROCESS_THREAD(wait_ping_process, ev, data){
-	const struct PingReq *pingReq =  data;
-	 const struct PingReq pingReqs = *pingReq;
-	const uip_ipaddr_t *sender_addr = &(pingReqs.dest_ipaddr);
-	LOG_INFO("PING wait_ping_process " );
-	LOG_INFO_6ADDR(sender_addr); 
-	LOG_INFO("\n"); 	
-	static struct etimer timer;
-	
-	pingreq(&udp_conn,  sender_addr);
-	etimer_set(&timer, CLOCK_SECOND*10); //Ping each 10 seconds
-	//pingreq(&udp_conn,  sender_addr);
-	
-  	PROCESS_BEGIN(); 
-  	while(1){
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer)); 
- 
-		pingreq(&udp_conn,  sender_addr);
-		
-    		etimer_reset(&timer);
-    		
-	}
-  	PROCESS_END();
-
-
-} 
+static struct etimer periodic_timer;
 
 static void
 udp_rx_callback(struct simple_udp_connection *c,
@@ -64,10 +35,16 @@ udp_rx_callback(struct simple_udp_connection *c,
          uint16_t datalen)
 {
 
-  process_exit(&wait_ping_process); //STOP PROCESS PING
+  
   LOG_INFO("Received response '%.*s' from ", datalen, (char *) data);
   LOG_INFO_6ADDR(sender_addr);
   LOG_INFO("\n");
+  
+  //struct PingReq envir = { .dest_ipaddr = *receiver_addr }; 
+  LOG_INFO("Ping should be to " );
+		LOG_INFO_6ADDR(sender_addr); 
+		LOG_INFO("\n"); 
+  startPingThread(&udp_conn,sender_addr);
   struct Packet* received_struct_ptr;
     received_struct_ptr = (struct Packet*) data;
     struct Packet packetRcv;
@@ -78,14 +55,13 @@ udp_rx_callback(struct simple_udp_connection *c,
 #endif
   LOG_INFO_("\n");
   
-  struct PingReq envir = { .dest_ipaddr = *receiver_addr }; 
-  process_start(&wait_ping_process,&envir);//START/RESTART PROCESS PING
+  
 
 }
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_client_process, ev, data)
 {
-  static struct etimer periodic_timer;
+  
   static unsigned count;
   //static char str[32];
   uip_ipaddr_t dest_ipaddr;
@@ -101,6 +77,8 @@ PROCESS_THREAD(udp_client_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
     if(NETSTACK_ROUTING.node_is_reachable() && NETSTACK_ROUTING.get_root_ipaddr(&dest_ipaddr)) {
+    
+    	if(!isConnected()){
     //Check si connection active (avec un ping) sinon relancé un hello ! 
       /* Send to DAG root */
       LOG_INFO("Sending hello request %u to ", count);
@@ -109,7 +87,9 @@ PROCESS_THREAD(udp_client_process, ev, data)
       hello(&udp_conn,&dest_ipaddr,1);
       //publish(&udp_conn, &dest_ipaddr, true, "Light", "ON");
       //publish(&udp_conn, &dest_ipaddr, false, "Temp", "31");
-      
+      }else{
+      	startPingThread(&udp_conn,&dest_ipaddr);
+      }
       
       //snprintf(str, sizeof(str), "hello %d", count);
       //simple_udp_sendto(&udp_conn, str, strlen(str), &dest_ipaddr);
