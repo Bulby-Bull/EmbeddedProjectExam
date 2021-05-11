@@ -40,7 +40,7 @@ udp_rx_callback(struct simple_udp_connection *c,
   LOG_INFO_6ADDR(sender_addr);
   LOG_INFO("\n");
   
-  //struct PingReq envir = { .dest_ipaddr = *receiver_addr }; 
+
   LOG_INFO("Ping should be to " );
 		LOG_INFO_6ADDR(sender_addr); 
 		LOG_INFO("\n"); 
@@ -61,9 +61,6 @@ udp_rx_callback(struct simple_udp_connection *c,
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_client_process, ev, data)
 {
-  
-  static unsigned count;
-  //static char str[32];
   uip_ipaddr_t dest_ipaddr;
 
   PROCESS_BEGIN();
@@ -81,22 +78,18 @@ PROCESS_THREAD(udp_client_process, ev, data)
     	if(!isConnected()){
     //Check si connection active (avec un ping) sinon relancé un hello ! 
       /* Send to DAG root */
-      LOG_INFO("Sending hello request %u to ", count);
+      LOG_INFO("Sending hello request to ");
       LOG_INFO_6ADDR(&dest_ipaddr);
       LOG_INFO_("\n");
       hello(&udp_conn,&dest_ipaddr,1);
 
       subscribe(&udp_conn, &dest_ipaddr, "Light");
-      
-      //publish(&udp_conn, &dest_ipaddr, true, "Light", "ON");
-      //publish(&udp_conn, &dest_ipaddr, false, "Temp", "31");
+
       }else{
       	startPingThread(&udp_conn,&dest_ipaddr);
       }
       
-      //snprintf(str, sizeof(str), "hello %d", count);
-      //simple_udp_sendto(&udp_conn, str, strlen(str), &dest_ipaddr);
-      count++;
+
     } else {
       LOG_INFO("Not reachable yet\n");
     }
