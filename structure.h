@@ -24,3 +24,9 @@ struct PingReq
 {
      const uip_ipaddr_t dest_ipaddr;
 };
+
+struct Topic
+{
+    char* name;
+    uip_ipaddr_t ips[2];
+};

@@ -148,13 +148,17 @@ void disconnect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destA
 }
 
 /* Subscribe to a topic */
-void subscribe(){
-	//sendPacket();
+void subscribe(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, char *topicname){
+	struct Packet packet;
+	packet = createPacket(SUBSCRIBE, RELIABLE, 0, 0, topicname ,"");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Return an acknowledge after subscription to a topic */
-void subACK(){
-	//sendPacket();
+void subACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	struct Packet packet;
+	packet = createPacket(SUBACK, UNRELIABLE, 0, 0, "", "");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Unsubscribe to a topic */
@@ -282,11 +286,20 @@ bool isConnected(){
 }
 
 static unsigned count =0;
+int TOPICSIZE = 1;
+struct Topic topics[1]; 
 
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	int msgType = getMessageType(packetRcv);
   	LOG_INFO("Received msg with MessageType = %i\n",msgType);
   	
+  	bool exist = 0;
+  	bool created = 0;
+  	struct Topic tp;
+
+  	int i;
+  	int j;
+
   	if(!ackRcv && msgType == ackTypeWanted){
   		LOG_INFO("ACK Well received\n");
   		ackRcv=true;
@@ -316,7 +329,67 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			//TODO Envoyer aux subscribers avec un push 
 			//push(udp_conn,destAddr, topic, payload);
 			break;
-		case SUBSCRIBE://subscribe();
+		case SUBSCRIBE:
+
+			LOG_INFO("SU00 SUBSCRIBE received \n");
+
+			LOG_INFO("SU01 le topic est %s \n", packetRcv.header.headerOption);
+
+			//Loop for the topics
+			for(i=0 ; i <= TOPICSIZE ; ++i){
+				//if the topic is not null
+				if( topics[i].name != NULL ){
+					//if the topic math the received topic
+					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
+						//Mark the topic as existing
+						exist = 1;
+						LOG_INFO("SU11 le topic existe déja \n");
+						//We loop into the ip of this topic
+						for(j=0 ; j <= 2 ; ++j){
+
+							//Check if subscriber not already in the list TODO
+							
+							//if an ip slot is empty
+							if( &topics[i].ips[j] == NULL ){
+								//We write the ip of the sbscriber
+								LOG_INFO("SU12 Subscriber registered \n");
+
+								topics[i].ips[j] = *destAddr;
+								LOG_INFO("SU13 Address from the pd ");
+  								LOG_INFO_6ADDR(destAddr);
+  								LOG_INFO_("\n");
+
+							}
+						}
+					}
+				}
+			}
+			//If the topic does not exist
+			if(!exist){
+				LOG_INFO("SU21 le topic n'existe pas encore \n");
+				//Loop between the existing project to find an empty slot
+				for(i=0 ; i <= TOPICSIZE ; ++i){
+					if( topics[i].name == NULL && created == 0){
+						created = 1;
+						LOG_INFO("SU22 le topic a été enregistré \n");
+
+						tp.name = packetRcv.header.headerOption;
+						
+						tp.ips[0] = *destAddr;
+
+						topics[i] = tp;
+
+						LOG_INFO("SU23 Address from the pd ");
+  						LOG_INFO_6ADDR(destAddr);
+  						LOG_INFO_("\n");
+					}
+				}
+			}
+
+			LOG_INFO("SUBACK is sending... \n");
+			subACK(udp_conn,destAddr);
+
+			//sendPacket();
 			break;
 		case DISCONNECT://disconnect();
 			connected = false;
@@ -338,7 +411,8 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		case CONNACK://connect(data, datalen);
 			connected = true;
 			break;
-		case SUBACK://SUBACK();
+		case SUBACK:
+			LOG_INFO("SUBACK received \n");
 			break;
 		case UNSUB://UNSUB();
 			break;
