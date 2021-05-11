@@ -8,6 +8,7 @@
 void connect(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr);
 int getMessageType(struct Packet packet);
 void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr,bool init);
 void disconnect();
 void subscribe();
 void subACK();
@@ -17,6 +18,6 @@ void publish();
 void pubACK();
 void push();
 void pushACK();
-void pingreq();
-void pingresp();
-void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool *pingSend);

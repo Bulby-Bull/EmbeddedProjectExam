@@ -9,6 +9,9 @@
 #include "sys/log.h"
 
 
+#define LOG_MODULE "App"
+#define LOG_LEVEL LOG_LEVEL_INFO
+
 
 
 /* Create a packet in function of the command (push, connect, ...) */
@@ -40,16 +43,37 @@ static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_co
 	return packet.header.mst;
 }
 
+/* Initiate a connection to a remote device or broker */
+void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool init){
+	
+	
+	struct Packet packet;
+	if (init){
+	LOG_INFO("Send hello packet to ");
+	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
+	}else{
+	LOG_INFO("Send response hello packet to ");
+	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "response", "testpayload");
+	}
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
+	sendPacket(packet, udp_conn,destAddr);
+}
 
 /* Initiate a connection to a remote device or broker */
 void connect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	LOG_INFO("Send connect packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
 	struct Packet packet = createPacket(CONNECT, UNRELIABLE, 0, 0, "CONNECT", "testpayload");
-	
 	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Return an acknowledge after a CONNECTION paquet */
 void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	LOG_INFO("Send connack packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
 	struct Packet packet = createPacket(CONNACK, UNRELIABLE, 0, 0, "CONNACK", "testpayload");
 	sendPacket(packet, udp_conn,destAddr);
 }
@@ -100,24 +124,40 @@ void pushACK(){
 }
 
 
+
 /* Make a ping to check the connection */
-void pingreq(){
-	//sendPacket();
+void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){ 
+	LOG_INFO("Send pingreq packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
+	struct Packet packet = createPacket(PINGREQ, UNRELIABLE, 0, 0, "PINGREQ", "testPayload");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Respond to a ping */
-void pingresp(){
+void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	LOG_INFO("Send pingresp packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
+	struct Packet packet = createPacket(PINGRESP, UNRELIABLE, 0, 0, "PINGRESP", "pingRespTestPayload");
+	sendPacket(packet, udp_conn,destAddr);
 	//sendPacket();
 }
 
-#define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_INFO
 
-void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool * pingSend){
 	int msgType = getMessageType(packetRcv);
-  	LOG_INFO("MessageType = %i",msgType);
+  	LOG_INFO("MessageType = %i\n",msgType);
 	switch (msgType){
 		case HELLO:
+			if(strcmp(packetRcv.header.headerOption ,"init")==0) {
+				LOG_INFO("Hello received response with Hello\n");
+				hello(udp_conn,destAddr,0);
+			}else{
+				LOG_INFO("Hello response received, response with connect\n");
+				connect(udp_conn,destAddr);
+			}
+			
 			break;
 		case PUBLISH://publish();
 			break;
@@ -140,8 +180,14 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		case UNSUBACK://UNSUBACK();
 			break;
 		case PINGREQ://ping();
+			LOG_INFO("Ping request received\n");
+			LOG_INFO_6ADDR(destAddr);
+			LOG_INFO("\n");
+			pingresp(udp_conn,destAddr);
 			break;
 		case PINGRESP://PINGRESP();
+			LOG_INFO("PING response received\n");
+			*pingSend = true;
 			break;
 		case PUSH://push();
 			break;
@@ -151,7 +197,9 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		default:
 			break;
 	}
+	//*pingSend = true;
 }
+
 
 
 

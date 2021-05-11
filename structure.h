@@ -20,3 +20,7 @@ struct Packet
     struct Header header;
     char payload[50];
 };
+struct PingReq
+{
+     const uip_ipaddr_t dest_ipaddr;
+};

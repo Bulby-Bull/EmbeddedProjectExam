@@ -18,6 +18,7 @@ static struct simple_udp_connection udp_conn;
 
 
 
+static bool * isconnected;
 
 static void
 udp_rx_callback(struct simple_udp_connection *c,
@@ -34,12 +35,12 @@ udp_rx_callback(struct simple_udp_connection *c,
     received_struct_ptr = (struct Packet*) data;
     struct Packet packetRcv;
     packetRcv = *received_struct_ptr;
-    handleMessage(packetRcv,&udp_conn,sender_addr);
+    handleMessage(packetRcv,&udp_conn,sender_addr, isconnected);
   LOG_INFO_("\n");
 #if WITH_SERVER_REPLY
   /* send back the same string to the client as an echo reply */
   LOG_INFO("Sending response.\n");
-  simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
+  //simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
 #endif /* WITH_SERVER_REPLY */
 }
 
