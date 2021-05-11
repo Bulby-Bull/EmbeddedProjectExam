@@ -71,9 +71,9 @@ PROCESS_THREAD(udp_client_process, ev, data)
       LOG_INFO("Sending hello request %u to ", count);
       LOG_INFO_6ADDR(&dest_ipaddr);
       LOG_INFO_("\n");
-      //hello(&udp_conn,&dest_ipaddr,1);
-      publish(&udp_conn, &dest_ipaddr, true, "Light", "ON");
-      publish(&udp_conn, &dest_ipaddr, false, "Temp", "31");
+      hello(&udp_conn,&dest_ipaddr,1);
+      //publish(&udp_conn, &dest_ipaddr, true, "Light", "ON");
+      //publish(&udp_conn, &dest_ipaddr, false, "Temp", "31");
       
       
       //snprintf(str, sizeof(str), "hello %d", count);

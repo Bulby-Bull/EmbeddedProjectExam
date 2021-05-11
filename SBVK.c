@@ -34,7 +34,7 @@ static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned i
 	bool ackRcv;
 	int ackTypeWanted;
 	struct simple_udp_connection *udp_connAck;
-	const uip_ipaddr_t *destAddrAck;
+	uip_ipaddr_t destAddrAck;
 	struct Packet packetAck;
 	
 #define SEND_INTERVAL		  (5 * CLOCK_SECOND)
@@ -46,15 +46,17 @@ PROCESS_THREAD(ackThread, ev, data)
 	  //const uip_ipaddr_t *destAddrCast = data;
 	  PROCESS_BEGIN();
 	  etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
+	  LOG_INFO("ACK process start send to ");
+	    	LOG_INFO_6ADDR(&destAddrAck);
 	  while(1) {
 	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
 	    if(!ackRcv){
 	    	LOG_INFO("ACK NOT received, resend to ");
 	    	LOG_INFO_("Message type %i ",packetAck.header.mst );
-	    	LOG_INFO_6ADDR(destAddrAck);
+	    	LOG_INFO_6ADDR(&destAddrAck);
       		LOG_INFO_("\n");
-	    	simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),destAddrAck);
+	    	simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),&destAddrAck);
 	    }else{
 	    	//free(destAddrAck);
 	    	PROCESS_EXIT();
@@ -76,7 +78,7 @@ int qosThread(struct Packet packet, struct simple_udp_connection *udp_conn,const
 	    	LOG_INFO_6ADDR(destAddr);
       		LOG_INFO_("\n");
       	packetAck = packet;
-	destAddrAck = destAddr;
+	destAddrAck = *destAddr;
 	process_start(&ackThread, &destAddr);
 	
 	return 0;
@@ -200,11 +202,12 @@ void pingresp(){
 	//sendPacket();
 }
 
-
+static unsigned count =0;
 
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	int msgType = getMessageType(packetRcv);
   	LOG_INFO("Received msg with MessageType = %i\n",msgType);
+  	
   	if(!ackRcv && msgType == ackTypeWanted){
   		LOG_INFO("ACK Well received\n");
   		ackRcv=true;
@@ -242,8 +245,15 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			LOG_INFO("PUBACK received \n");
 			break;
 		case CONNECT://PUBACK();
+			if(count<3){
+			LOG_INFO("Connect received but wait for reliability connack count = %i\n",count);
+			count++;
+			}else{
 			LOG_INFO("Connect received response with connack\n");
-			//connACK(udp_conn,destAddr);
+			connACK(udp_conn,destAddr);
+			}
+			
+			
 			break;
 		case CONNACK://connect(data, datalen);
 			break;
