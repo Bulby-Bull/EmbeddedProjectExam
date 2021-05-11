@@ -18,6 +18,6 @@ void publish(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 void pubACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void push();
 void pushACK();
-void pingreq();
-void pingresp();
+void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);

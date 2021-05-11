@@ -22,7 +22,38 @@ static struct simple_udp_connection udp_conn;
 /*---------------------------------------------------------------------------*/
 PROCESS(udp_client_process, "UDP client");
 AUTOSTART_PROCESSES(&udp_client_process);
+
+AUTOSTART_PROCESSES(&udp_client_process ); 
 /*---------------------------------------------------------------------------*/
+
+
+PROCESS_THREAD(wait_ping_process, ev, data){
+	const struct PingReq *pingReq =  data;
+	 const struct PingReq pingReqs = *pingReq;
+	const uip_ipaddr_t *sender_addr = &(pingReqs.dest_ipaddr);
+	LOG_INFO("PING wait_ping_process " );
+	LOG_INFO_6ADDR(sender_addr); 
+	LOG_INFO("\n"); 	
+	static struct etimer timer;
+	
+	pingreq(&udp_conn,  sender_addr);
+	etimer_set(&timer, CLOCK_SECOND*10); //Ping each 10 seconds
+	//pingreq(&udp_conn,  sender_addr);
+	
+  	PROCESS_BEGIN(); 
+  	while(1){
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer)); 
+ 
+		pingreq(&udp_conn,  sender_addr);
+		
+    		etimer_reset(&timer);
+    		
+	}
+  	PROCESS_END();
+
+
+} 
+
 static void
 udp_rx_callback(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
@@ -33,6 +64,7 @@ udp_rx_callback(struct simple_udp_connection *c,
          uint16_t datalen)
 {
 
+  process_exit(&wait_ping_process); //STOP PROCESS PING
   LOG_INFO("Received response '%.*s' from ", datalen, (char *) data);
   LOG_INFO_6ADDR(sender_addr);
   LOG_INFO("\n");
@@ -45,6 +77,9 @@ udp_rx_callback(struct simple_udp_connection *c,
   LOG_INFO_(" LLSEC LV:%d", uipbuf_get_attr(UIPBUF_ATTR_LLSEC_LEVEL));
 #endif
   LOG_INFO_("\n");
+  
+  struct PingReq envir = { .dest_ipaddr = *receiver_addr }; 
+  process_start(&wait_ping_process,&envir);//START/RESTART PROCESS PING
 
 }
 /*---------------------------------------------------------------------------*/

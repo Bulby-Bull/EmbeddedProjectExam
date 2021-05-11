@@ -193,13 +193,21 @@ void pushACK(){
 
 
 /* Make a ping to check the connection */
-void pingreq(){
-	//sendPacket();
+void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){ 
+	LOG_INFO("Send pingreq packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
+	struct Packet packet = createPacket(PINGREQ, UNRELIABLE, 0, 0, "PINGREQ", "testPayload");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Respond to a ping */
-void pingresp(){
-	//sendPacket();
+void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
+	LOG_INFO("Send pingresp packet to ");
+	LOG_INFO_6ADDR(destAddr);
+      	LOG_INFO_("\n");
+	struct Packet packet = createPacket(PINGRESP, UNRELIABLE, 0, 0, "PINGRESP", "pingRespTestPayload");
+	sendPacket(packet, udp_conn,destAddr); 
 }
 
 static unsigned count =0;
@@ -264,8 +272,13 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		case UNSUBACK://UNSUBACK();
 			break;
 		case PINGREQ://ping();
+			LOG_INFO("Ping request received\n");
+			LOG_INFO_6ADDR(destAddr);
+			LOG_INFO("\n");
+			pingresp(udp_conn,destAddr);
 			break;
 		case PINGRESP://PINGRESP();
+			LOG_INFO("PING response received\n");
 			break;
 		case PUSH://push();
 			break;
