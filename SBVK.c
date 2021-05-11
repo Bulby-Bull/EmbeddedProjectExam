@@ -160,12 +160,22 @@ void unSUBACK(){
 }
 
 /* Publish information/command for a topic */
-void publish(){
-	//sendPacket();
+void publish(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, bool command, char *topicname, char *value){
+	struct Packet packet;
+	if(command){
+		packet = createPacket(PUBLISH, RELIABLE, 0, 0, topicname, value);
+		sendPacket(packet, udp_conn,destAddr);
+	}else{
+		packet = createPacket(PUBLISH, UNRELIABLE, 0, 0, topicname, value);
+		sendPacket(packet, udp_conn,destAddr);
+	}
+	
 }
 
-void pubACK(){
-	//sendPacket();
+void pubACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
+	struct Packet packet;
+	packet = createPacket(PUBACK, UNRELIABLE, 0, 0, "", "");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Transfer an information/command (method for the broker) */
@@ -210,13 +220,26 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			}
 			
 			break;
-		case PUBLISH://publish();
+		case PUBLISH:
+			//If the publish is in the reliable mode, send puback
+			if(packetRcv.header.qos == 1) {
+				LOG_INFO("PUBLISH received \n");
+				LOG_INFO("PUBACK is sending... \n");
+				pubACK(udp_conn,destAddr);
+			}
+			else{
+				LOG_INFO("PUBLISH received received, NOT ACK \n");
+			}
+			LOG_INFO("le topic est %s et le payload : %s \n", packetRcv.header.headerOption, packetRcv.payload);
+			//TODO Envoyer aux subscribers avec un push 
+			//push(udp_conn,destAddr, topic, payload);
 			break;
 		case SUBSCRIBE://subscribe();
 			break;
 		case DISCONNECT://disconnect();
 			break;
-		case PUBACK: //publish();
+		case PUBACK:
+			LOG_INFO("PUBACK received \n");
 			break;
 		case CONNECT://PUBACK();
 			LOG_INFO("Connect received response with connack\n");
