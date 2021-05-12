@@ -8,7 +8,7 @@
 #endif
 
 /**
- * Clear the CLI
+ * Clear the CLI for windows or linux
  *
  */
 void clear(){
@@ -218,11 +218,11 @@ int main() {
                 printf("---------------------- \n");
                 for(int i = 0 ; i < 4; i++){//Sleep 500ms*4
                     printf(".");
-#ifdef _WIN32 //For windows
+                    #ifdef _WIN32 //For windows
                     Sleep(500);
-#else //For linux
+                    #else //For linux
                     usleep(500000);
-#endif
+                    #endif
                 }
                 launch = 1;
                 break;
