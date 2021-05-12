@@ -23,7 +23,7 @@ def convertStringToInt(result):
 
 # Main menu of the application
 def callMenu():
-    print("This is the menu, choose a device to manage (1-3)")
+    print("This is the menu, choose a device to manage (1-5)")
     print("**********************************************************")
     print("1. The connected light")
     print("2. The connected washer")
@@ -33,6 +33,8 @@ def callMenu():
     print("**********************************************************")
     response = input()
     clear()
+    if response == '':
+        return -1
     return int(response)
 
 
@@ -65,6 +67,8 @@ def callLight():
         print("###################################")
         result = input()
         clear()
+        if result == '':
+            return -1
         result = convertStringToInt(result)
         if result == 1 or result == 2:
             sendCommandToLight(result)
@@ -85,7 +89,7 @@ def sendCommandToWasher(result):
         print("A new cycle is sending...")
         print("----------------------------")
         print("")
-        #Todo send packet in UDP to the server
+        # Todo send packet in UDP to the server
     elif result == 2:
         print("----------------------------------")
         print("The current cycle is stopping...")
@@ -111,6 +115,8 @@ def callWasher():
         print("###################################")
         result = input()
         clear()
+        if result == '':
+            return -1
         result = convertStringToInt(result)
         if result == 1 or result == 2:
             sendCommandToWasher(result)
@@ -137,8 +143,10 @@ def callGazSensor():
     print("Enter to return in the main menu...")
     print("---------------------------------------")
     print("")
-    input()
+    result = input()
     clear()
+    if result == '':
+        return -1
 
 
 # Alarm management
@@ -149,7 +157,9 @@ def callAlarm():
     print("|The current status is :            |")
     print("-------------------------------------")
     print("Enter to return in the main menu...")
-    input()
+    result = input()
+    if result == '':
+        return -1
     clear()
 
 
@@ -179,6 +189,6 @@ if __name__ == '__main__':
             exit()
         if response > 5 or response < 1:
             print("----------------------------------------")
-            print("Pliz enter a number between 1 and 3")
+            print("Pliz enter a number between 1 and 5")
             print("----------------------------------------")
             print("")
