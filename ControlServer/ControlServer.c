@@ -1,11 +1,46 @@
+//to compile with gcc use this : gcc -o control controlserv.c -lpthread
+
 #include <stdio.h>
 #include <stdlib.h>
+#include "structureapp.h"
+#include <pthread.h>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #include <unistd.h>
 #endif
+
+///////////////////////kriki part inits + methods
+#define PORT     60001
+#define MAXLINE 1024
+
+#define FROMPORT 5678
+static const uint8_t udpFrom[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+
+static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
+
+void ipv6_expander(const struct in6_addr * addr) {
+    char str[40];
+    sprintf(str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            (int)addr->s6_addr[0], (int)addr->s6_addr[1],
+            (int)addr->s6_addr[2], (int)addr->s6_addr[3],
+            (int)addr->s6_addr[4], (int)addr->s6_addr[5],
+            (int)addr->s6_addr[6], (int)addr->s6_addr[7],
+            (int)addr->s6_addr[8], (int)addr->s6_addr[9],
+            (int)addr->s6_addr[10], (int)addr->s6_addr[11],
+            (int)addr->s6_addr[12], (int)addr->s6_addr[13],
+            (int)addr->s6_addr[14], (int)addr->s6_addr[15]);
+    printf("Ipv6 addr = %s \n", str);
+}
+//////////////////////
+
 
 /**
  * Clear the CLI for windows or linux
@@ -19,6 +54,72 @@ void clear(){
 #if defined(_WIN32) || defined(_WIN64)
     system("cls");
 #endif
+}
+
+struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
+    struct Header header;
+    header.mst = mst;
+    header.qos = qos;
+    header.rl = rl;
+    header.test = test;
+    strcpy(header.headerOption, headerOption);
+
+    struct Packet packet;
+    packet.header = header;
+    strcpy(packet.payload, payload);
+
+    return packet;
+}
+
+/**
+* Set an UDP connection and send a packet to the border router
+**/
+void sendUDP(struct Packet packet) {
+    int sockfd;
+    char buffer[MAXLINE];
+    char *hello = "Hello from client";
+    struct sockaddr_in6     servaddr;
+    struct sockaddr_in6     fromaddr;
+
+    // Creating socket file descriptor
+    if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin6_family = AF_INET6;
+    servaddr.sin6_port = htons(PORT);
+    //servaddr.sin_addr.s_addr = INADDR_ANY;
+    memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
+
+
+    fromaddr.sin6_family = AF_INET6;
+    fromaddr.sin6_port = htons(FROMPORT);
+    //servaddr.sin_addr.s_addr = INADDR_ANY;
+    memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
+    bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
+    connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
+
+    int n, len;
+
+    while(1){
+        sendto(sockfd, &packet, sizeof(packet),
+               MSG_CONFIRM, (const struct sockaddr *) &servaddr,
+               sizeof(servaddr));
+        printf("Hello message sent.\n");
+        ipv6_expander(&servaddr.sin6_addr);
+    }
+
+    n = recvfrom(sockfd, (char *)buffer, MAXLINE,
+                 MSG_WAITALL, (struct sockaddr *) &servaddr,
+                 &len);
+    buffer[n] = '\0';
+    printf("Server : %s\n", buffer);
+
+    close(sockfd);
 }
 
 /**
@@ -50,6 +151,9 @@ void sendCommandToLight(int result) {
         printf("The light is switching ON \n");
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
+        struct Packet packet;
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "ON");
+        sendUDP(packet);
 
     }
     else if (result == 2) {
@@ -57,7 +161,9 @@ void sendCommandToLight(int result) {
         printf("The light is switching OFF \n");
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
-
+        struct Packet packet;
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "OFF");
+        sendUDP(packet);
     }
 }
 
@@ -108,12 +214,18 @@ void sendCommandToWasher(int result) {
         printf("A new cycle is sending... \n");
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
+        struct Packet packet;
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "ON");
+        sendUDP(packet);
     }
     else if (result == 2) {
         printf("----------------------------------- \n");
         printf("The current cycle is stopping... \n");
         printf("----------------------------------- \n \n");
         //Todo send packet in UDP to the server
+        struct Packet packet;
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "OFF");
+        sendUDP(packet);
     }
 }
 
@@ -190,7 +302,18 @@ void callAlarm() {
     system("pause");
 }
 
+void *handleReceiver(void *vargp)
+{
+    printf("Je reçois des packets \n");
+
+    return NULL;
+}
+
 int main() {
+    //thread created to handle received packet from the border router
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, handleReceiver, NULL);
+
     int launch = 0;
 
     printf("Welcome to the Control Server \n \n");
@@ -218,11 +341,11 @@ int main() {
                 printf("---------------------- \n");
                 for(int i = 0 ; i < 4; i++){//Sleep 500ms*4
                     printf(".");
-                    #ifdef _WIN32 //For windows
+#ifdef _WIN32 //For windows
                     Sleep(500);
-                    #else //For linux
+#else //For linux
                     usleep(500000);
-                    #endif
+#endif
                 }
                 launch = 1;
                 break;
