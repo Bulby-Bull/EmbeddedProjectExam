@@ -6,14 +6,30 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-  
+// #include "../structure.h" 
 #define PORT     60001
 #define MAXLINE 1024
 
 #define FROMPORT 5678
-static const uint8_t udpFrom[16] = { 0xaa, 0xaa,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+static const uint8_t udpFrom[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
-static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
+
+struct Header
+{
+    unsigned int mst : 4;
+    unsigned int qos : 1;
+    unsigned int rl: 8;    
+    unsigned int test: 3; 
+    char headerOption[20];
+};
+
+//Structure of a packet
+struct Packet
+{
+    struct Header header;
+    char payload[50];
+};
 
 void ipv6_expander(const struct in6_addr * addr) {
     char str[40];
@@ -29,6 +45,20 @@ void ipv6_expander(const struct in6_addr * addr) {
    printf("Ipv6 addr = %s \n", str);
 }
 
+static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
+    struct Header header;
+    header.mst = mst;
+    header.qos = qos;
+    header.rl = rl;
+    header.test = test;
+    strcpy(header.headerOption, headerOption);
+    
+    struct Packet packet;
+    packet.header = header;
+    strcpy(packet.payload, payload);
+    
+    return packet;
+}
   
 // Driver code
 int main() {
@@ -47,21 +77,26 @@ int main() {
     memset(&servaddr, 0, sizeof(servaddr));
       
     // Filling server information
-    servaddr.sin6_family = AF_INET;
+    servaddr.sin6_family = AF_INET6;
     servaddr.sin6_port = htons(PORT);
     //servaddr.sin_addr.s_addr = INADDR_ANY;
      memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
  
  
-    fromaddr.sin6_family = AF_INET;
-    fromaddr.sin6_port = htons(PORT);
+    fromaddr.sin6_family = AF_INET6;
+    fromaddr.sin6_port = htons(FROMPORT);
     //servaddr.sin_addr.s_addr = INADDR_ANY;
     memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
     bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
+    connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
 
     int n, len;
+
+    struct Packet packet;
+
+    packet = createPacket(0, 0, 0, 0, "init", "testpayload");
     while(1){  
-    sendto(sockfd, (const char *)hello, strlen(hello),
+    sendto(sockfd, &packet, sizeof(packet),
         MSG_CONFIRM, (const struct sockaddr *) &servaddr, 
             sizeof(servaddr));
     printf("Hello message sent.\n");
