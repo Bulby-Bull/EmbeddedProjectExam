@@ -17,6 +17,9 @@
 #define UDP_REMOTE_IP  'bbbb::c30c:0:0:1'
 #define UDP_REMOTE_PORT  60001
 
+static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+
+
 int main(int argc, char* argv[])
 {
    int sock;
@@ -34,11 +37,12 @@ int main(int argc, char* argv[])
    sock = socket(PF_INET6, SOCK_DGRAM,0);
 
    memset(&sin6, 0, sizeof(struct sockaddr_in6));
-   sin6.sin6_port = htonl(UDP_REMOTE_IP);
+   sin6.sin6_port = 60001;
    sin6.sin6_family = AF_INET6;
-   sin6.sin6_addr.s6_addr = UDP_REMOTE_IP;
+   memcpy(sin6.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
 
    status = bind(sock, (struct sockaddr *)&sin6, sin6len);
+ printf("BP1\n");
 
    if(-1 == status)
      perror("bind"), exit(1);
