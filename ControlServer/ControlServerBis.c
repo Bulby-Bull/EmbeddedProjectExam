@@ -39,6 +39,12 @@ void ipv6_expander(const struct in6_addr * addr) {
             (int)addr->s6_addr[14], (int)addr->s6_addr[15]);
     printf("Ipv6 addr = %s \n", str);
 }
+
+int sockfd;
+struct sockaddr_in6     servaddr;
+struct sockaddr_in6     fromaddr;
+
+
 //////////////////////
 
 
@@ -56,34 +62,25 @@ void clear(){
 #endif
 }
 
-struct Packet2 createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
-    struct Header2 header;
+struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
+    struct Header header;
     header.mst = mst;
     header.qos = qos;
     header.rl = rl;
     header.test = test;
     strcpy(header.headerOption, headerOption);
 
-    struct Packet2 packet;
+    struct Packet packet;
     packet.header = header;
     strcpy(packet.payload, payload);
 
     return packet;
 }
 
-void initUDP(){
-
-}
-
 /**
-* Set an UDP connection and send a packet to the border router
+* Init the UDP connection for receive and send
 **/
-void sendUDP(struct Packet2 packet) {
-    int sockfd;
-    char buffer[MAXLINE];
-    struct sockaddr_in6     servaddr;
-    struct sockaddr_in6     fromaddr;
-
+void initUDP(){
     // Creating socket file descriptor
     if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
         perror("socket creation failed");
@@ -98,21 +95,25 @@ void sendUDP(struct Packet2 packet) {
     //servaddr.sin_addr.s_addr = INADDR_ANY;
     memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
 
-
     fromaddr.sin6_family = AF_INET6;
     fromaddr.sin6_port = htons(FROMPORT);
     //servaddr.sin_addr.s_addr = INADDR_ANY;
     memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
     bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
     connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
+}
+
+/**
+* Set an UDP connection and send a packet to the border router
+**/
+void sendUDP(struct Packet packet) {
 
     sendto(sockfd, &packet, sizeof(packet),
            MSG_CONFIRM, (const struct sockaddr *) &servaddr,
            sizeof(servaddr));
     printf("Hello message sent.\n");
     ipv6_expander(&servaddr.sin6_addr);
-
-    close(sockfd);
+    //close(sockfd);
 }
 
 /**
@@ -144,7 +145,7 @@ void sendCommandToLight(int result) {
         printf("The light is switching ON \n");
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
-        struct Packet2 packet;
+        struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "ON");
         sendUDP(packet);
 
@@ -154,7 +155,7 @@ void sendCommandToLight(int result) {
         printf("The light is switching OFF \n");
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
-        struct Packet2 packet;
+        struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "OFF");
         sendUDP(packet);
     }
@@ -207,7 +208,7 @@ void sendCommandToWasher(int result) {
         printf("A new cycle is sending... \n");
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
-        struct Packet2 packet;
+        struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "ON");
         sendUDP(packet);
     }
@@ -216,7 +217,7 @@ void sendCommandToWasher(int result) {
         printf("The current cycle is stopping... \n");
         printf("----------------------------------- \n \n");
         //Todo send packet in UDP to the server
-        struct Packet2 packet;
+        struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "OFF");
         sendUDP(packet);
     }
@@ -308,45 +309,21 @@ void callAlarm() {
 
 void *handleReceiver(void *vargp)
 {
-    int sockfd;
     char buffer[MAXLINE];
-    struct sockaddr_in6     servaddr;
-    struct sockaddr_in6     fromaddr;
-
-    // Creating socket file descriptor
-    if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    memset(&servaddr, 0, sizeof(servaddr));
-
-    // Filling server information
-    servaddr.sin6_family = AF_INET6;
-    servaddr.sin6_port = htons(PORT);
-    //servaddr.sin_addr.s_addr = INADDR_ANY;
-    memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
-
-
-    fromaddr.sin6_family = AF_INET6;
-    fromaddr.sin6_port = htons(FROMPORT);
-    //servaddr.sin_addr.s_addr = INADDR_ANY;
-    memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
-    bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
-    connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
 
     int n, len;
-    n = recvfrom(sockfd, (char *)buffer, MAXLINE,
-                 MSG_WAITALL, (struct sockaddr *) &servaddr,
-                 &len);
-    buffer[n] = '\0';
-    printf("Server : %s\n", buffer);
-
-    return NULL;
+    while(1){
+        n = recvfrom(sockfd, (char *)buffer, MAXLINE,
+                     MSG_WAITALL, (struct sockaddr *) &servaddr,
+                     &len);
+        buffer[n] = '\0';
+        //printf("Server : %s\n", buffer);
+    }
+    //return NULL;
 }
 
 int main() {
-
+    initUDP();
     //thread created to handle received packet from the border router
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, handleReceiver, NULL);
