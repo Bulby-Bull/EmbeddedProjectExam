@@ -191,14 +191,23 @@ void pubACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr
 }
 
 /* Transfer an information/command (method for the broker) */
-void push(){
-	//sendPacket();
+void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, bool command, char *topicname, char *value){
+	struct Packet packet;
+	if(command){
+		packet = createPacket(PUSH, RELIABLE, 0, 0, topicname, value);
+		sendPacket(packet, udp_conn,destAddr);
+	}else{
+		packet = createPacket(PUSH, UNRELIABLE, 0, 0, topicname, value);
+		sendPacket(packet, udp_conn,destAddr);
+	}
 }
 
 
 /* Return an acknowledge when the information/command is received */
-void pushACK(){
-	//sendPacket();
+void pushACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
+	struct Packet packet;
+	packet = createPacket(PUSHACK, UNRELIABLE, 0, 0, "", "");
+	sendPacket(packet, udp_conn,destAddr);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -325,9 +334,24 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			else{
 				LOG_INFO("PUBLISH received received, NOT ACK \n");
 			}
-			LOG_INFO("le topic est %s et le payload : %s \n", packetRcv.header.headerOption, packetRcv.payload);
+			LOG_INFO("SUP le topic est %s et le payload : %s \n", packetRcv.header.headerOption, packetRcv.payload);
 			//TODO Envoyer aux subscribers avec un push 
-			//push(udp_conn,destAddr, topic, payload);
+
+			//Loop between all topics
+			for (i = 0; i <=1; ++i)
+			{
+				//If the topic is not null
+				if( topics[i].name != NULL ){
+					//If the topic correspond to the published topic
+					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
+						//Send to all ip a push
+						for (j = 0; j <= 1; ++j)
+						{
+							push(udp_conn , &topics[i].ips[j] , packetRcv.header.qos , packetRcv.header.headerOption , packetRcv.payload );
+						}
+					}
+				}
+			}
 			break;
 		case SUBSCRIBE:
 
@@ -345,7 +369,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 						exist = 1;
 						LOG_INFO("SU11 le topic existe déja \n");
 						//We loop into the ip of this topic
-						for(j=0 ; j <= 2 ; ++j){
+						for(j=0 ; j <= 1 ; ++j){
 
 							//Check if subscriber not already in the list TODO
 							
@@ -405,8 +429,6 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			LOG_INFO("Connect received response with connack\n");
 			connACK(udp_conn,destAddr);
 			}
-			
-			
 			break;
 		case CONNACK://connect(data, datalen);
 			connected = true;
@@ -428,14 +450,17 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			LOG_INFO("PING response received\n");
 			stopPingThread();
 			break;
-		case PUSH://push();
+		case PUSH:
+			LOG_INFO("SU received topic %s and value %s \n" , packetRcv.header.headerOption , packetRcv.payload);
+			pushACK(udp_conn,destAddr);
 			break;
-		case PUSHACK://pushack();
+		case PUSHACK:
+			LOG_INFO("SU PUSHACK received \n");
 			break;
-
 		default:
 			break;
 	}
+
 }
 
 

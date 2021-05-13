@@ -87,8 +87,13 @@ PROCESS_THREAD(udp_client_process, ev, data)
 
       }else{
       	startPingThread(&udp_conn,&dest_ipaddr);
+
+        publish(&udp_conn, &dest_ipaddr, 1 , "Light" , "ON");
+
+        publish(&udp_conn, &dest_ipaddr, 1 , "Light" , "OFF");
       }
       
+
 
     } else {
       LOG_INFO("Not reachable yet\n");
