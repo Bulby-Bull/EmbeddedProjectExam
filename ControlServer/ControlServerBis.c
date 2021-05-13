@@ -307,7 +307,7 @@ void callAlarm() {
 #endif
 }
 
-void *handleReceiver(void *vargp)
+void *receiveUDP(void *vargp)
 {
     char buffer[MAXLINE];
 
@@ -326,7 +326,7 @@ int main() {
     initUDP();
     //thread created to handle received packet from the border router
     pthread_t thread_id;
-    pthread_create(&thread_id, NULL, handleReceiver, NULL);
+    pthread_create(&thread_id, NULL, receiveUDP, NULL);
 
     int launch = 0;
 
