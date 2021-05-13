@@ -78,12 +78,13 @@ PROCESS_THREAD(udp_client_process, ev, data)
     	if(!isConnected()){
     //Check si connection active (avec un ping) sinon relancé un hello ! 
       /* Send to DAG root */
+	uip_ip6addr(&dest_ipaddr, 0xbbbb, 0, 0, 0, 0, 0, 0, 1);
       LOG_INFO("Sending hello request to ");
       LOG_INFO_6ADDR(&dest_ipaddr);
       LOG_INFO_("\n");
       hello(&udp_conn,&dest_ipaddr,1);
 
-      subscribe(&udp_conn, &dest_ipaddr, "Light");
+      //subscribe(&udp_conn, &dest_ipaddr, "Light");
 
       }else{
       	startPingThread(&udp_conn,&dest_ipaddr);
