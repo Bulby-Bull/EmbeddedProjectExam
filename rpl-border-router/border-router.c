@@ -44,6 +44,7 @@
 
 static struct simple_udp_connection udp_conn;
 
+/* Listen to receive msg */
 static void
 udp_rx_callback(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
@@ -56,7 +57,6 @@ udp_rx_callback(struct simple_udp_connection *c,
   LOG_INFO("Received request from ");
   LOG_INFO_6ADDR(sender_addr);
   LOG_INFO_("\n");
-  //Transfer to server
   
 #if WITH_SERVER_REPLY
   /* send back the same string to the client as an echo reply */

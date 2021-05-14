@@ -5,6 +5,7 @@
 #include "net/netstack.h"
 #include "net/ipv6/simple-udp.h"
 
+/* Log configuration */
 #include "sys/log.h"
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_INFO
@@ -14,8 +15,8 @@
 #define UDP_SERVER_PORT	5678
 
 static struct simple_udp_connection udp_conn;
-//const uip_ipaddr_t *iptest;
 
+/* Listen to receive msg */
 static void
 udp_rx_callback(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
@@ -26,16 +27,14 @@ udp_rx_callback(struct simple_udp_connection *c,
          uint16_t datalen)
 {
   
-  struct Packet* received_struct_ptr;
+    struct Packet* received_struct_ptr;
     received_struct_ptr = (struct Packet*) data;
     struct Packet packetRcv;
     packetRcv = *received_struct_ptr;
     handleMessage(packetRcv,&udp_conn,sender_addr);
   
 #if WITH_SERVER_REPLY
-  /* send back the same string to the client as an echo reply */
-  //LOG_INFO("Sending response.\n");
-  //simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
+
 #endif /* WITH_SERVER_REPLY */
 }
 
