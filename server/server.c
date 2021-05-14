@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
    memcpy(sin6.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
 
    status = bind(sock, (struct sockaddr *)&sin6, sin6len);
- printf("BP1\n");
+    printf("BP1\n");
 
    if(-1 == status)
      perror("bind"), exit(1);

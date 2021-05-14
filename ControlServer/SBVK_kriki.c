@@ -111,6 +111,7 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
   	// if(!ackRcv && msgType == ackTypeWanted){
   	// 	ackRcv=true;
   	// }
+  	printf("Before switch \n");
 	switch (msgType){
 		case HELLO:
 			printf("send hello\n");
