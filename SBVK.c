@@ -47,16 +47,10 @@ PROCESS_THREAD(ackThread, ev, data)
 	  //const uip_ipaddr_t *destAddrCast = data;
 	  PROCESS_BEGIN();
 	  etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
-	  LOG_INFO("ACK process start send to ");
-	    	LOG_INFO_6ADDR(&destAddrAck);
 	  while(1) {
 	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
 	    if(!ackRcv){
-	    	LOG_INFO("ACK NOT received, resend to ");
-	    	LOG_INFO_("Message type %i ",packetAck.header.mst );
-	    	LOG_INFO_6ADDR(&destAddrAck);
-      		LOG_INFO_("\n");
 	    	simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),&destAddrAck);
 	    }else{
 	    	//free(destAddrAck);
@@ -144,7 +138,7 @@ void disconnect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destA
     LOG_INFO("\n");
     struct Packet packet = createPacket(DISCONNECT, UNRELIABLE, 0, 0, "DISCONNECT", "testpayload");
     sendPacket(packet, udp_conn,destAddr);
- 
+
 }
 
 /* Subscribe to a topic */
@@ -162,8 +156,8 @@ void subACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr)
 }
 
 /* Unsubscribe to a topic */
-void unSUB(){
-	//sendPacket();
+void unSUB(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, char *topicname){
+
 }
 
 /* Return an acknowledge after unsubscription to a topic */
@@ -209,13 +203,6 @@ void pushACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAdd
 	packet = createPacket(PUSHACK, UNRELIABLE, 0, 0, "", "");
 	sendPacket(packet, udp_conn,destAddr);
 }
-
-/*---------------------------------------------------------------------------*/
-
-/*---------------------------------------------------------------------------*/
-
-
-
 
 /* Make a ping to check the connection */
 void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){ 
@@ -294,6 +281,21 @@ bool isConnected(){
 	return connected;
 }
 
+char* pushedINFO;
+char* emptyINFO;
+
+bool fresh = 0;
+
+char* getPushedINFO(){
+	if(fresh){
+		LOG_INFO("SU data is %s \n", pushedINFO);
+		fresh = 1;
+		return pushedINFO;
+	}else{
+		return emptyINFO;
+	}
+}
+
 static unsigned count =0;
 int TOPICSIZE = 1;
 struct Topic topics[1]; 
@@ -327,14 +329,14 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 		case PUBLISH:
 			//If the publish is in the reliable mode, send puback
 			if(packetRcv.header.qos == 1) {
-				LOG_INFO("PUBLISH received \n");
+				LOG_INFO("SUPUBLISH received \n");
 				LOG_INFO("PUBACK is sending... \n");
 				pubACK(udp_conn,destAddr);
 			}
 			else{
 				LOG_INFO("PUBLISH received received, NOT ACK \n");
 			}
-			LOG_INFO("SUP le topic est %s et le payload : %s \n", packetRcv.header.headerOption, packetRcv.payload);
+			LOG_INFO("SU I push %s w/ payload : %s \n", packetRcv.header.headerOption, packetRcv.payload);
 			//TODO Envoyer aux subscribers avec un push 
 
 			//Loop between all topics
@@ -402,10 +404,6 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 						tp.ips[0] = *destAddr;
 
 						topics[i] = tp;
-
-						LOG_INFO("SU23 Address from the pd ");
-  						LOG_INFO_6ADDR(destAddr);
-  						LOG_INFO_("\n");
 					}
 				}
 			}
@@ -419,7 +417,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			connected = false;
 			break;
 		case PUBACK:
-			LOG_INFO("PUBACK received \n");
+			LOG_INFO("SUPUBACK received \n");
 			break;
 		case CONNECT://PUBACK();
 			if(count<3){
@@ -451,8 +449,12 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			stopPingThread();
 			break;
 		case PUSH:
-			LOG_INFO("SU received topic %s and value %s \n" , packetRcv.header.headerOption , packetRcv.payload);
+			LOG_INFO("SU I received topic %s and value %s \n" , packetRcv.header.headerOption , packetRcv.payload);
+			pushedINFO = packetRcv.payload;
+			fresh = 1;
 			pushACK(udp_conn,destAddr);
+			LOG_INFO("SU pushed is %s\n",pushedINFO);
+			LOG_INFO("SU value is %s\n",packetRcv.payload);
 			break;
 		case PUSHACK:
 			LOG_INFO("SU PUSHACK received \n");

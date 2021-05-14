@@ -24,3 +24,5 @@ void stopPingThread();
 void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr);
+void setPushedINFO(char* value);
+char* getPushedINFO();

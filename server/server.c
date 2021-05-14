@@ -1,81 +1,51 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <stdlib.h>
 #include <arpa/inet.h>
-
-#define MAXBUF 65536
-#define PORT     8080
+#include <netinet/in.h>
+  
+#define PORT     60001
 #define MAXLINE 1024
-#define UDP_LOCAL_IP  'aaaa::1'
-#define UDP_LOCAL_PORT  5678
+  
+// Driver code
+int main() {
+    int sockfd;
+    char buffer[MAXLINE];
+    char *hello = "Hello from client";
+    struct sockaddr_in     servaddr;
+    char* UDP_REMOTE_IP = 'bbbb::c30c:0:0:1'
+    
+    // Creating socket file descriptor
+    if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+  
+    memset(&servaddr, 0, sizeof(servaddr));
+      
+    // Filling server information
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(PORT);
 
-
-#define UDP_REMOTE_IP  'bbbb::c30c:0:0:1'
-#define UDP_REMOTE_PORT  60001
-
-int main(int argc, char* argv[])
-{
-   int sock;
-   int status;
-   struct addrinfo sainfo, *psinfo;
-   struct sockaddr_in6 sin6;
-   int sin6len;
-   char buffer[MAXBUF];
-
-   sin6len = sizeof(struct sockaddr_in6);
-
-   if(argc < 2)
-     printf("Specify a port number\n"), exit(1);
-
-   sock = socket(PF_INET6, SOCK_DGRAM,0);
-
-   memset(&sin6, 0, sizeof(struct sockaddr_in6));
-   sin6.sin6_port = htonl(UDP_REMOTE_IP);
-   sin6.sin6_family = AF_INET6;
-   sin6.sin6_addr.s6_addr = UDP_REMOTE_IP;
-
-   status = bind(sock, (struct sockaddr *)&sin6, sin6len);
-
-   if(-1 == status)
-     perror("bind"), exit(1);
-
-   memset(&sainfo, 0, sizeof(struct addrinfo));
-   memset(&sin6, 0, sin6len);
-
-   sainfo.ai_flags = 0;
-   sainfo.ai_family = PF_INET6;
-   sainfo.ai_socktype = SOCK_DGRAM;
-   sainfo.ai_protocol = IPPROTO_UDP;
-   status = getaddrinfo("ip6-localhost", argv[1], &sainfo, &psinfo);
-
-   switch (status) 
-     {
-      case EAI_FAMILY: printf("family\n");
-        break;
-      case EAI_SOCKTYPE: printf("stype\n");
-        break;
-      case EAI_BADFLAGS: printf("flag\n");
-        break;
-      case EAI_NONAME: printf("noname\n");
-        break;
-      case EAI_SERVICE: printf("service\n");
-        break;
-     }
-   sprintf(buffer,"Ciao");
-
-   status = sendto(sock, buffer, strlen(buffer), 0,
-                     (struct sockaddr *)psinfo->ai_addr, sin6len);
-   printf("buffer : %s \t%d\n", buffer, status);
-
-   // free memory
-   freeaddrinfo(psinfo);
-   psinfo = NULL;
-
-   shutdown(sock, 2);
-   close(sock);
-   return 0;
+    //Unicast adress
+    servaddr.sin_addr.s_addr = UDP_REMOTE_IP;
+      
+    int n, len;
+      
+    sendto(sockfd, (const char *)hello, strlen(hello),
+        MSG_CONFIRM, (const struct sockaddr *) &servaddr, 
+            sizeof(servaddr));
+    printf("Hello message sent.\n");
+          
+    n = recvfrom(sockfd, (char *)buffer, MAXLINE, 
+                MSG_WAITALL, (struct sockaddr *) &servaddr,
+                &len);
+    buffer[n] = '\0';
+    printf("Server : %s\n", buffer);
+  
+    close(sockfd);
+    return 0;
 }
