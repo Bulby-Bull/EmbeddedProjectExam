@@ -4,7 +4,7 @@ The role of the broker is to manage the entry packets and answer is needed. It a
 received by publishers to all subscribers which are subscribed. The broker is the gateway in the RPL
 network, so all packets pass through by it.
 
-##How it works
+## How it works
 
 - Create a new Z1 node. Compile the broker.c on this node. 
   Pay attention for the makefile, it should be look like this: 
