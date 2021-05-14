@@ -27,7 +27,7 @@ static struct Packet createPacket(unsigned int mst, unsigned int rel, char* head
 	return packet;
 }
 
-
+//Print ipv6 address
 void ipv6_expander(const struct in6_addr * addr) {
     char str[40];
     sprintf(str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
@@ -48,7 +48,7 @@ void ipv6_expander(const struct in6_addr * addr) {
 	int sockAck;
 	struct sockaddr_in6 destAddrAck;
 	struct Packet packetAck;
-
+//Thread waiting for ack
 void* threadAck(void *arg){
 	while(1){
 		sleep(3); //Wait 3 seconds
@@ -62,15 +62,12 @@ void* threadAck(void *arg){
 }
 
 pthread_t thread_id;
-
+//Launching reliable thread waiting for ack
 int qosThread(int sock,struct Packet packet, struct  sockaddr_in6 dest_addr){
  	packetAck = packet;
 	destAddrAck = dest_addr;
 	sockAck = sock;
-	// process_start(&ackThread, &destAddr);
-	
     pthread_create(&thread_id, NULL, threadAck, NULL);
-    //pthread_join(thread_id,NULL);
 	return 0;
 }
 
@@ -83,8 +80,6 @@ int sendPacket(int sock, struct Packet packet, struct  sockaddr_in6 dest_addr){
 	 }
 	printf("send packet to");
 	sendto(sock, &packet, sizeof(packet),MSG_CONFIRM, ( struct sockaddr *) &dest_addr, sizeof(dest_addr));
-
-	//simple_udp_sendto(udp_conn,&packet,  sizeof(packet),destAddr);
 	return 0;
 }
 
@@ -127,6 +122,7 @@ void subACK(int sock, struct  sockaddr_in6 dest_addr){
 	sendPacket(sock, packet,dest_addr);
 }
 
+/* Return an acknowledge after publish to a topic */
 void pubACK(int sock, struct  sockaddr_in6 dest_addr){
 	struct Packet packet;
 	packet = createPacket(PUBACK, UNRELIABLE,  "", "");
@@ -154,6 +150,7 @@ void pingresp(int sock, struct  sockaddr_in6 dest_addr){
  int TOPICSIZE = 10;
 struct Topic topics[10]; 
 
+// Publish information into the broker topics
 void publishTo(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_addr){
 	for (int i = 0; i <=10; ++i)
 			{
@@ -175,7 +172,7 @@ void publishTo(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_addr){
 
 
 static unsigned count =0;
-
+//Handle message based on message type
 void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_addr){
 	
 	int msgType = getMessageType(packetRcv);
@@ -227,11 +224,7 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
 			}
 			break;
 		case CONNECT://PUBACK();
-			// if(count<3){
-			// 	count++;
-			// }else{
 			connACK(sock,dest_addr);
-			// }
 			break;
 		case SUBSCRIBE:
 			//Loop for the topics
@@ -269,10 +262,8 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
 				}
 			}
 			subACK(sock,dest_addr);
-
-			//sendPacket();
 			break;
-case PINGREQ://ping();
+case PINGREQ:
 			pingresp(sock,dest_addr);
 			break;
 		default:
