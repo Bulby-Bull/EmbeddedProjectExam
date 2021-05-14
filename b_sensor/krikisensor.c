@@ -74,11 +74,11 @@ PROCESS_THREAD(udp_client_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
     if(NETSTACK_ROUTING.node_is_reachable() && NETSTACK_ROUTING.get_root_ipaddr(&dest_ipaddr)) {
-    
+      uip_ip6addr(&dest_ipaddr, 0xbbbb, 0, 0, 0, 0, 0, 0, 1);
     	if(!isConnected()){
     //Check si connection active (avec un ping) sinon relancé un hello ! 
       /* Send to DAG root */
-	uip_ip6addr(&dest_ipaddr, 0xbbbb, 0, 0, 0, 0, 0, 0, 1);
+	
       LOG_INFO("Sending hello request to ");
       LOG_INFO_6ADDR(&dest_ipaddr);
       LOG_INFO_("\n");

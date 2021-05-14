@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <unistd.h>
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_INFO
 bool connected=false;
@@ -38,18 +39,47 @@ void ipv6_expander(const struct in6_addr * addr) {
             (int)addr->s6_addr[12], (int)addr->s6_addr[13],
             (int)addr->s6_addr[14], (int)addr->s6_addr[15]);
     printf("Ipv6 addr = %s \n", str);
+
 }
 
+	bool ackRcv;
+	int ackTypeWanted;
+	int sockAck;
+	struct sockaddr_in6 destAddrAck;
+	struct Packet packetAck;
 
+void* threadAck(void *arg){
+	while(1){
+		sleep(3); //Wait 3 seconds
+		if(!ackRcv){
+		sendto(sockAck, &packetAck, sizeof(packetAck),MSG_CONFIRM, ( struct sockaddr *) &destAddrAck, sizeof(destAddrAck));
+		}
+		else{
+			pthread_exit(NULL);
+		}
+	}
+}
 
+pthread_t thread_id;
+
+int qosThread(int sock,struct Packet packet, struct  sockaddr_in6 dest_addr){
+ 	packetAck = packet;
+	destAddrAck = dest_addr;
+	sockAck = sock;
+	// process_start(&ackThread, &destAddr);
+	
+    pthread_create(&thread_id, NULL, threadAck, NULL);
+    //pthread_join(thread_id,NULL);
+	return 0;
+}
 
 /* Send a packet to a device or a broker, called by connect, connACK, push, ... */
 int sendPacket(int sock, struct Packet packet, struct  sockaddr_in6 dest_addr){
-	// if(packet.header.qos){
-	// 	ackRcv = false;
-	// 	ackTypeWanted = packet.header.mst+1;
-	// 	qosThread(packet, udp_conn, destAddr);
-	// }
+	 if(packet.header.qos){
+	 	ackRcv = false;
+	 	ackTypeWanted = packet.header.mst+1;
+	 	qosThread(sock,packet, dest_addr);
+	 }
 	printf("send packet to");
 	sendto(sock, &packet, sizeof(packet),MSG_CONFIRM, ( struct sockaddr *) &dest_addr, sizeof(dest_addr));
 
@@ -89,11 +119,39 @@ void connACK(int sock, struct  sockaddr_in6 dest_addr){
 	sendPacket(sock, packet,dest_addr);
 }
 
+/* Return an acknowledge after subscription to a topic */
+void subACK(int sock, struct  sockaddr_in6 dest_addr){
+	struct Packet packet;
+	packet = createPacket(SUBACK, UNRELIABLE, 0, 0, "", "");
+	sendPacket(sock, packet,dest_addr);
+}
 
+void pubACK(int sock, struct  sockaddr_in6 dest_addr){
+	struct Packet packet;
+	packet = createPacket(PUBACK, UNRELIABLE, 0, 0, "", "");
+	sendPacket(sock, packet,dest_addr);
+}
 
- 
-// int TOPICSIZE = 1;
-// struct Topic topics[1]; 
+/* Transfer an information/command (method for the broker) */
+void push(int sock, struct  sockaddr_in6 dest_addr, bool command, char *topicname, char *value){
+	struct Packet packet;
+	if(command){
+		packet = createPacket(PUSH, RELIABLE, 0, 0, topicname, value);
+		sendPacket(sock, packet,dest_addr);
+	}else{
+		packet = createPacket(PUSH, UNRELIABLE, 0, 0, topicname, value);
+		sendPacket(sock, packet,dest_addr);
+	}
+}
+
+/* Respond to a ping */
+void pingresp(int sock, struct  sockaddr_in6 dest_addr){
+	struct Packet packet = createPacket(PINGRESP, UNRELIABLE, 0, 0, "PINGRESP", "pingRespTestPayload");
+	sendPacket(sock, packet,dest_addr);
+}
+
+ int TOPICSIZE = 1;
+struct Topic topics[1]; 
 
 static unsigned count =0;
 
@@ -103,14 +161,14 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
   	printf("handleMessage %i \n", msgType);
   	bool exist = 0;
   	bool created = 0;
-  	//struct Topic tp;
+  	struct Topic tp;
 
   	int i;
   	int j;
 
-  	// if(!ackRcv && msgType == ackTypeWanted){
-  	// 	ackRcv=true;
-  	// }
+  	if(!ackRcv && msgType == ackTypeWanted){
+  	 	ackRcv=true;
+  	 }
   	printf("Before switch \n");
 	switch (msgType){
 		case HELLO:
@@ -122,12 +180,77 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
 			}
 			
 			break;
+		case PUBLISH:
+			//If the publish is in the reliable mode, send puback
+			if(packetRcv.header.qos == 1) {
+				
+				pubACK(sock,dest_addr);
+			}
+			
+			//Loop between all topics
+			for (i = 0; i <=1; ++i)
+			{
+				//If the topic is not null
+				if( topics[i].name != NULL ){
+					//If the topic correspond to the published topic
+					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
+						//Send to all ip a push
+						for (j = 0; j <= 1; ++j)
+						{
+							push(sock, topics[i].ips[j] , packetRcv.header.qos , packetRcv.header.headerOption , packetRcv.payload );
+						}
+					}
+				}
+			}
+			break;
 		case CONNECT://PUBACK();
 			// if(count<3){
 			// 	count++;
 			// }else{
 			connACK(sock,dest_addr);
 			// }
+			break;
+		case SUBSCRIBE:
+			//Loop for the topics
+			for(i=0 ; i <= TOPICSIZE ; ++i){
+				//if the topic is not null
+				if( topics[i].name != NULL ){
+					//if the topic match the received topic
+					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
+						//Mark the topic as existing
+						exist = 1;
+						//We loop into the ip of this topic
+						for(j=0 ; j <= 1 ; ++j){
+
+							//Check if subscriber not already in the list TODO
+							
+							//if an ip slot is empty
+							if( &topics[i].ips[j] == NULL ){
+								//We write the ip of the sbscriber
+								topics[i].ips[j] = dest_addr;
+							}
+						}
+					}
+				}
+			}
+			//If the topic does not exist
+			if(!exist){
+				//Loop between the existing project to find an empty slot
+				for(i=0 ; i <= TOPICSIZE ; ++i){
+					if( topics[i].name == NULL && created == 0){
+						created = 1;
+						tp.name = packetRcv.header.headerOption;
+						tp.ips[0] = dest_addr;
+						topics[i] = tp;
+					}
+				}
+			}
+			subACK(sock,dest_addr);
+
+			//sendPacket();
+			break;
+case PINGREQ://ping();
+			pingresp(sock,dest_addr);
 			break;
 		default:
 			

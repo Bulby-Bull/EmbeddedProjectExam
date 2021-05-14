@@ -23,7 +23,7 @@
 static const uint8_t udpFrom[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
 static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
-
+ int launch = 0;
 
 //////////////////////
 
@@ -78,7 +78,7 @@ void sendUDP(struct Packet packet) {
 
     int n, len;
 
-    while(1){
+    while(!launch){
         //sendto(sockfd, &packet, sizeof(packet),
           //     MSG_CONFIRM, (const struct sockaddr *) &servaddr,
             //   sizeof(servaddr));
@@ -336,7 +336,7 @@ void *handleReceiver(void *vargp)
 }
 
 void *messages(void * arg){
-       int launch = 0;
+      
 
     printf("Welcome to the Control Server \n \n");
     while(launch == 0){
@@ -381,13 +381,6 @@ void *messages(void * arg){
 }
 
 int main() {
-
-    
-   
-   
-    
-    printf("back in main");
-    
     //thread created to handle received packet from the border router
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, messages, NULL);
