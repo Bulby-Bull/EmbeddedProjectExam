@@ -124,7 +124,6 @@ void sendCommandToLight(int result) {
         printf("---------------------------- \n");
         printf("The light is switching ON \n");
         printf("---------------------------- \n \n");
-        //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE,  "Light", "ON");
         publishTo(packet,sock,sin6);
@@ -134,7 +133,6 @@ void sendCommandToLight(int result) {
         printf("---------------------------- \n");
         printf("The light is switching OFF \n");
         printf("---------------------------- \n \n");
-        //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, "Light", "OFF");
         publishTo(packet,sock,sin6);
@@ -186,7 +184,6 @@ void sendCommandToWasher(int result) {
         printf("---------------------------- \n");
         printf("A new cycle is sending... \n");
         printf("---------------------------- \n \n");
-        //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE,  "Washer", "ON");
         publishTo(packet,sock,sin6);
@@ -195,7 +192,6 @@ void sendCommandToWasher(int result) {
         printf("----------------------------------- \n");
         printf("The current cycle is stopping... \n");
         printf("----------------------------------- \n \n");
-        //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, "Washer", "OFF");
         publishTo(packet,sock,sin6);
@@ -209,7 +205,6 @@ void callWasher() {
     int reset = 0;
     int result;
     while (reset == 0){
-        //Todo Recover information from broker on the state
         printf("CONNECTED WASHER \n");
         printf("----------------------------------------------------------- \n");
         printf("|The current state is : %s                                | \n", "ON");
@@ -253,7 +248,6 @@ void callGazSensor() {
     printf("----------------------------------------------------------- \n");
     printf("|The current value is :  %d ppm                            | \n", 5);
     printf("----------------------------------------------------------- \n");
-    // Todo the value is > than 400, go activate the alarm
     printf("--------------------------------------- \n");
     printf("Enter to return in the main menu... \n");
     printf("--------------------------------------- \n");
@@ -268,7 +262,6 @@ void callAlarm() {
     printf("----------------------------------------------------------- \n");
     printf("|The current value is :  %s                              | \n", "OFF");
     printf("----------------------------------------------------------- \n");
-    // Todo recover the alarm status from broker
     printf("--------------------------------------- \n");
     printf("Enter to return in the main menu... \n");
     printf("--------------------------------------- \n");
