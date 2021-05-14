@@ -193,14 +193,14 @@ void publish(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAdd
 	}
 	
 }
-/* Return an acknowledgement after publish of a value */ 
+/* Return an acknowledge after publish of a value */ 
 void pubACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	struct Packet packet;
 	packet = createPacket(PUBACK, UNRELIABLE,  "", "");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
-/* Transfer an information/command (method for the broker) */
+/* Transfer an information/command (method for the broker) to the server */
 void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, bool command, char *topicname, char *value){
 	struct Packet packet;
 	if(command){
@@ -213,7 +213,7 @@ void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, 
 }
 
 
-/* Return an acknowledge when the information/command is received */
+/* Return an acknowledge when the information/command is received to the server */
 void pushACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	struct Packet packet;
 	packet = createPacket(PUSHACK, UNRELIABLE,  "", "");
