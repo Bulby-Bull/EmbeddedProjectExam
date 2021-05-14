@@ -1,9 +1,11 @@
+//to compile with gcc use this : gcc -o control controlserv.c -lpthread
+
 #include <stdio.h>
 #include <stdlib.h>
-//#include "structureapp.h"
+#include "structureapp.h"
 #include <pthread.h>
 #include <string.h>
-#include "SBVK_broker.c"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -18,15 +20,31 @@
 //Port of border router
 #define PORT     60001
 #define MAXLINE 1024
-//Port on which listen to
-#define FROMPORT 5678
 
-//Address of listening in case of multiple Network access card
+//Port on which listen
+#define FROMPORT 5678
 static const uint8_t udpFrom[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
- int launch = 0;
+void ipv6_expander(const struct in6_addr * addr) {
+    char str[40];
+    sprintf(str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            (int)addr->s6_addr[0], (int)addr->s6_addr[1],
+            (int)addr->s6_addr[2], (int)addr->s6_addr[3],
+            (int)addr->s6_addr[4], (int)addr->s6_addr[5],
+            (int)addr->s6_addr[6], (int)addr->s6_addr[7],
+            (int)addr->s6_addr[8], (int)addr->s6_addr[9],
+            (int)addr->s6_addr[10], (int)addr->s6_addr[11],
+            (int)addr->s6_addr[12], (int)addr->s6_addr[13],
+            (int)addr->s6_addr[14], (int)addr->s6_addr[15]);
+    printf("Ipv6 addr = %s \n", str);
+}
+
+int sockfd;
+struct sockaddr_in6     servaddr;
+struct sockaddr_in6     fromaddr;
 
 
+//////////////////////
 
 
 /**
@@ -43,57 +61,58 @@ void clear(){
 #endif
 }
 
+struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
+    struct Header header;
+    header.mst = mst;
+    header.qos = qos;
+    header.rl = rl;
+    header.test = test;
+    strcpy(header.headerOption, headerOption);
 
-//Socket of udp server
-int sock;
-//Address of server
-struct sockaddr_in6 sin6;
+    struct Packet packet;
+    packet.header = header;
+    strcpy(packet.payload, payload);
+
+    return packet;
+}
+
+/**
+* Init the UDP connection for receive and send
+**/
+void initUDP(){
+    // Creating socket file descriptor
+    if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin6_family = AF_INET6;
+    servaddr.sin6_port = htons(PORT);
+    //servaddr.sin_addr.s_addr = INADDR_ANY;
+    memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
+
+    fromaddr.sin6_family = AF_INET6;
+    fromaddr.sin6_port = htons(FROMPORT);
+    //servaddr.sin_addr.s_addr = INADDR_ANY;
+    memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
+    bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
+    connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
+}
 
 /**
 * Set an UDP connection and send a packet to the border router
 **/
-void receiveUDP() {
- 
-   int status;
-   
-   int sin6len;
-   struct Packet* buffer = (struct Packet*) malloc(sizeof(struct Packet));
+void sendUDP(struct Packet packet) {
 
-   sock = socket(PF_INET6, SOCK_DGRAM,0);//Define socket
-   sin6len = sizeof(struct sockaddr_in6);
-   memset(&sin6, 0, sin6len);
-
-   //Set listening port and address
-   sin6.sin6_port = htons(5678);
-   sin6.sin6_family = AF_INET6;
-   sin6.sin6_addr = in6addr_any;
-
-   status = bind(sock, (struct sockaddr *)&sin6, sin6len); //Bind socket to specific address/port
-   if(-1 == status)
-     perror("bind"), exit(1);
-
-   status = getsockname(sock, (struct sockaddr *)&sin6, &sin6len);
-    printf("%d\n", ntohs(sin6.sin6_port));
-   printf("Ip is  :  ");
-   ipv6_expander(&sin6.sin6_addr);
-   printf("\n");
-
-   //Listen until when program is stopped by user
-   while(launch == 0){
-   status = recvfrom(sock, buffer, MAXLINE, 0, 
-                     (struct sockaddr *)&sin6, &sin6len);
-   printf("From ip :  ");
-   ipv6_expander(&sin6.sin6_addr);
-   printf("\n");
-   struct Packet packetRcv;
-    packetRcv = *buffer;
-   printf("Message received messagetype = %i \n", packetRcv.header.mst );
-   //Handle message for specific behaviour depending of message type
-   handleMessage(packetRcv,sock,sin6);
-   }
-
-   close(sock);
-   printf("close socket\n");
+    sendto(sockfd, &packet, sizeof(packet),
+           MSG_CONFIRM, (const struct sockaddr *) &servaddr,
+           sizeof(servaddr));
+    printf("Hello message sent.\n");
+    ipv6_expander(&servaddr.sin6_addr);
+    //close(sockfd);
 }
 
 /**
@@ -126,8 +145,8 @@ void sendCommandToLight(int result) {
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
         struct Packet packet;
-        packet = createPacket(PUBLISH, RELIABLE,  "Light", "ON");
-        publishTo(packet,sock,sin6);
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "ON");
+        sendUDP(packet);
 
     }
     else if (result == 2) {
@@ -136,8 +155,8 @@ void sendCommandToLight(int result) {
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
         struct Packet packet;
-        packet = createPacket(PUBLISH, RELIABLE, "Light", "OFF");
-        publishTo(packet,sock,sin6);
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "OFF");
+        sendUDP(packet);
     }
 }
 
@@ -179,7 +198,8 @@ void callLight() {
 }
 
 /**
- * Sending command to washer (begin or finish cycle)
+ *
+ * @param result int of choice
  */
 void sendCommandToWasher(int result) {
     if(result == 1){
@@ -188,8 +208,8 @@ void sendCommandToWasher(int result) {
         printf("---------------------------- \n \n");
         //Todo send packet in UDP to the server
         struct Packet packet;
-        packet = createPacket(PUBLISH, RELIABLE,  "Washer", "ON");
-        publishTo(packet,sock,sin6);
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "ON");
+        sendUDP(packet);
     }
     else if (result == 2) {
         printf("----------------------------------- \n");
@@ -197,8 +217,8 @@ void sendCommandToWasher(int result) {
         printf("----------------------------------- \n \n");
         //Todo send packet in UDP to the server
         struct Packet packet;
-        packet = createPacket(PUBLISH, RELIABLE, "Washer", "OFF");
-        publishTo(packet,sock,sin6);
+        packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "OFF");
+        sendUDP(packet);
     }
 }
 
@@ -254,10 +274,16 @@ void callGazSensor() {
     printf("|The current value is :  %d ppm                            | \n", 5);
     printf("----------------------------------------------------------- \n");
     // Todo the value is > than 400, go activate the alarm
+#if defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+    printf("Return to the main menu... \n \n");
+#endif
+#if defined(_WIN32) || defined(_WIN64)
     printf("--------------------------------------- \n");
     printf("Enter to return in the main menu... \n");
     printf("--------------------------------------- \n");
     system("pause");
+#endif
+
 }
 
 /**
@@ -269,15 +295,39 @@ void callAlarm() {
     printf("|The current value is :  %s                              | \n", "OFF");
     printf("----------------------------------------------------------- \n");
     // Todo recover the alarm status from broker
+#if defined(__linux__) || defined(__unix__) || defined(__APPLE__)
+    printf("Return to the main menu... \n \n");
+#endif
+#if defined(_WIN32) || defined(_WIN64)
     printf("--------------------------------------- \n");
     printf("Enter to return in the main menu... \n");
     printf("--------------------------------------- \n");
     system("pause");
+#endif
 }
 
-//Handle user input messages
-void *messages(void * arg){
-      
+void *receiveUDP(void *vargp)
+{
+    char buffer[MAXLINE];
+
+    int n, len;
+    while(1){
+        n = recvfrom(sockfd, (char *)buffer, MAXLINE,
+                     MSG_WAITALL, (struct sockaddr *) &servaddr,
+                     &len);
+        buffer[n] = '\0';
+        //printf("Server : %s\n", buffer);
+    }
+    //return NULL;
+}
+
+int main() {
+    initUDP();
+    //thread created to handle received packet from the border router
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, receiveUDP, NULL);
+
+    int launch = 0;
 
     printf("Welcome to the Control Server \n \n");
     while(launch == 0){
@@ -291,35 +341,37 @@ void *messages(void * arg){
                 callWasher();
                 break;
             case 3:
-                callGazSensor();
                 clear();
+                callGazSensor();
                 break;
             case 4:
-                callAlarm();
                 clear();
+                callAlarm();
                 break;
             case 5:
                 printf("---------------------- \n");
                 printf("End of program \n");
                 printf("---------------------- \n");
+                for(int i = 0 ; i < 4; i++){//Sleep 500ms*4
+                    printf(".");
+#ifdef _WIN32 //For windows
+                    Sleep(500);
+#else //For linux
+                    usleep(500000);
+#endif
+                }
                 launch = 1;
                 break;
             default:
                 printf("---------------------------------------- \n");
-                printf("Please enter a number between 1 and 5 \n");
+                printf("Pliz enter a number between 1 and 5 \n");
                 printf("---------------------------------------- \n \n");
                 break;
         }
     }
-}
-
-int main() {
-    //thread created to handle user interaction
-    pthread_t thread_id;
-    pthread_create(&thread_id, NULL, messages, NULL);
-
-    receiveUDP();
-    pthread_join(thread_id,NULL);
-    
     return 0;
 }
+
+
+
+
