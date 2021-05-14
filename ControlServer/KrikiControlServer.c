@@ -2,10 +2,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "structureapp.h"
+//#include "structureapp.h"
 #include <pthread.h>
 #include <string.h>
-
+#include "SBVK_kriki.c"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -26,19 +26,7 @@ static const uint8_t udpFrom[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00
 
 static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
 
-void ipv6_expander(const struct in6_addr * addr) {
-    char str[40];
-    sprintf(str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-            (int)addr->s6_addr[0], (int)addr->s6_addr[1],
-            (int)addr->s6_addr[2], (int)addr->s6_addr[3],
-            (int)addr->s6_addr[4], (int)addr->s6_addr[5],
-            (int)addr->s6_addr[6], (int)addr->s6_addr[7],
-            (int)addr->s6_addr[8], (int)addr->s6_addr[9],
-            (int)addr->s6_addr[10], (int)addr->s6_addr[11],
-            (int)addr->s6_addr[12], (int)addr->s6_addr[13],
-            (int)addr->s6_addr[14], (int)addr->s6_addr[15]);
-    printf("Ipv6 addr = %s \n", str);
-}
+
 //////////////////////
 
 
@@ -56,20 +44,7 @@ void clear(){
 #endif
 }
 
-struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
-    struct Header header;
-    header.mst = mst;
-    header.qos = qos;
-    header.rl = rl;
-    header.test = test;
-    strcpy(header.headerOption, headerOption);
 
-    struct Packet packet;
-    packet.header = header;
-    strcpy(packet.payload, payload);
-
-    return packet;
-}
 
 /**
 * Set an UDP connection and send a packet to the border router
@@ -123,57 +98,110 @@ void sendUDP(struct Packet packet) {
 }
 
 
+
 /**
 * Set an UDP connection and send a packet to the border router
 **/
 void receiveUDP() {
-    int sockfd;
-    struct Packet buffer[MAXLINE];
-    char *hello = "Hello from client";
-    struct sockaddr_in6     servaddr;
-    struct sockaddr_in6     fromaddr;
+    // int sockfd;
+    // char buffer[MAXLINE];
+    // char *hello = "Hello from client";
+    // struct sockaddr_in6     servaddr;
+    // struct sockaddr_in6     fromaddr;
 
-    // Creating socket file descriptor
-    if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
+    // // Creating socket file descriptor
+    // if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
+    //     perror("socket creation failed");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    memset(&servaddr, 0, sizeof(servaddr));
+    // memset(&servaddr, 0, sizeof(servaddr));
 
-    // Filling server information
-    servaddr.sin6_family = AF_INET6;
-    servaddr.sin6_port = htons(PORT);
-    servaddr.sin6_addr = in6addr_any;
-    //memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
+    // // Filling server information
+    // servaddr.sin6_family = AF_INET6;
+    // servaddr.sin6_port = htons(PORT);
+    // servaddr.sin6_addr = in6addr_any;
+    // //memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
 
 
-    fromaddr.sin6_family = AF_INET6;
-    fromaddr.sin6_port = htons(FROMPORT);
-    //servaddr.sin_addr.s_addr = INADDR_ANY;
-    memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
-    bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
-    //connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
+    // fromaddr.sin6_family = AF_INET6;
+    // fromaddr.sin6_port = htons(FROMPORT);
+    // //servaddr.sin_addr.s_addr = INADDR_ANY;
+    // memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
+    // bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
+    // //connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
 
-    int n, len;
+    // int n, len;
 
-    while(1){
-        //sendto(sockfd, &packet, sizeof(packet),
-          //     MSG_CONFIRM, (const struct sockaddr *) &servaddr,
-            //   sizeof(servaddr));
-        //printf("Hello message sent.\n");
-        //ipv6_expander(&servaddr.sin6_addr);
+    // while(1){
+    //     //sendto(sockfd, &packet, sizeof(packet),
+    //       //     MSG_CONFIRM, (const struct sockaddr *) &servaddr,
+    //         //   sizeof(servaddr));
+    //     //printf("Hello message sent.\n");
+    //     //ipv6_expander(&servaddr.sin6_addr);
+    //  printf("SEn attente d'un paquet \n");
     
 
-    n = recvfrom(sockfd, (struct Packet*)buffer, 72,
-                 MSG_WAITALL, (struct sockaddr *) &servaddr,
-                 &len);
-    //buffer[n] = '\0';
-    struct Packet packetRcv;
+    // n = recvfrom(sockfd, (char *)buffer, MAXLINE,
+    //              0, (struct sockaddr *) &servaddr,
+    //              &len);
+    // //buffer[n] = '\0';
+    // //struct Packet packetRcv;
+    // //packetRcv = *buffer;
+    // printf("Server : Receive packet msgtype = %s\n", buffer);
+    //}
+
+   int sock;
+   int status;
+   struct sockaddr_in6 sin6;
+   int sin6len;
+   struct Packet* buffer;
+
+   sock = socket(PF_INET6, SOCK_DGRAM,0);
+
+   sin6len = sizeof(struct sockaddr_in6);
+
+   memset(&sin6, 0, sin6len);
+
+   /* just use the first address returned in the structure */
+
+   sin6.sin6_port = htons(5678);
+   sin6.sin6_family = AF_INET6;
+   sin6.sin6_addr = in6addr_any;
+
+   status = bind(sock, (struct sockaddr *)&sin6, sin6len);
+   if(-1 == status)
+     perror("bind"), exit(1);
+
+   status = getsockname(sock, (struct sockaddr *)&sin6, &sin6len);
+
+   printf("%d\n", ntohs(sin6.sin6_port));
+   while(1){
+   status = recvfrom(sock, buffer, MAXLINE, 0, 
+                     (struct sockaddr *)&sin6, &sin6len);
+   printf("test\n");
+   struct Packet packetRcv;
     packetRcv = *buffer;
-    printf("Server : Receive packet msgtype = %i\n", packetRcv.header.mst);
-    }
-    close(sockfd);
+   printf("Message received messagetype = %i \n", packetRcv.header.mst );
+
+   printf("From ip :  ");
+   ipv6_expander(&sin6.sin6_addr);
+   printf("\n");
+   // if(packetRcv.header.mst==0){
+   //  printf("Send packet");
+   //  packetRcv = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
+   //  sendto(sock, &packetRcv, sizeof(packetRcv),MSG_CONFIRM, (const struct sockaddr *) &sin6, sizeof(sin6));
+
+   // }
+   handleMessage(packetRcv,sock,sin6);
+   }
+   printf("test2\n");
+   printf("test3\n");
+   printf("test4\n");
+   printf("test5\n");
+
+   close(sock);
+   printf("close socket\n");
 }
 
 /**
@@ -366,7 +394,7 @@ void *handleReceiver(void *vargp)
 int main() {
 
     receiveUDP();
-
+    printf("back in main");
     //thread created to handle received packet from the border router
     //pthread_t thread_id;
     //pthread_create(&thread_id, NULL, handleReceiver, NULL);
