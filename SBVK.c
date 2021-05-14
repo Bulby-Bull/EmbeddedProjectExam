@@ -34,6 +34,7 @@ static struct Packet createPacket(unsigned int mst, unsigned int rel, char* head
 char* pushedINFO;
 bool fresh = 0;
 
+/* Recover pushed information packet */
 char* getPushedINFO(){
 	if(fresh){
 		fresh = 1;
@@ -43,41 +44,46 @@ char* getPushedINFO(){
 }
 
 
-	bool ackRcv;
-	int ackTypeWanted;
-	struct simple_udp_connection *udp_connAck;
-	uip_ipaddr_t destAddrAck;
-	struct Packet packetAck;
+bool ackRcv;
+int ackTypeWanted;
+struct simple_udp_connection *udp_connAck;
+uip_ipaddr_t destAddrAck;
+struct Packet packetAck;
 	
 #define SEND_INTERVAL		  (5 * CLOCK_SECOND)
+/* Declaration fo process ackThread */
 PROCESS(ackThread, "Check ack");
+
+/**
+ * This thread  ackThread send an acknowledgement packet until he receive his own acknowledgement.
+ */
 PROCESS_THREAD(ackThread, ev, data)
-	{
-	  static struct etimer periodic_timer;
-	  //static unsigned count;
-	  //const uip_ipaddr_t *destAddrCast = data;
-	  PROCESS_BEGIN();
-	  etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
-	  while(1) {
-	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+{
+	static struct etimer periodic_timer;
+	//static unsigned count;
+	//const uip_ipaddr_t *destAddrCast = data;
+	PROCESS_BEGIN();
+	etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
+	while(1) {
+	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
 
-	    if(!ackRcv){
-	    	simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),&destAddrAck);
-	    }else{
-	    	//free(destAddrAck);
-	    	PROCESS_EXIT();
-	    }
-
-	    /* Add some jitter */
-	    etimer_set(&periodic_timer, SEND_INTERVAL
-	      - CLOCK_SECOND + (random_rand() % (2 * CLOCK_SECOND)));
-	  }
-
-  	PROCESS_END();
+	if(!ackRcv){
+		simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),&destAddrAck);
+	}else{
+		//free(destAddrAck);
+		PROCESS_EXIT();
 	}
 
+	/* Add some jitter */
+	etimer_set(&periodic_timer, SEND_INTERVAL
+		- CLOCK_SECOND + (random_rand() % (2 * CLOCK_SECOND)));
+	}
+
+	PROCESS_END();
+}
 
 
+/* Start the process ackThread and send the destination address received. */
 int qosThread(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	udp_connAck = udp_conn;
 	LOG_INFO("Change reliable addresse to : ");
@@ -102,7 +108,7 @@ static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_co
 	return 0;
 }
 
-//When we receive a paquet, we split the paquet and we check which is the type of message
+/* Recover the message type from the header of the packet added in parameter.*/
  int getMessageType(struct Packet packet){
 	return packet.header.mst;
 }
@@ -110,8 +116,6 @@ static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_co
 
 /* Initiate a connection to a remote device or broker */
 void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, bool init){
-	
-	
 	struct Packet packet;
 	if (init){
 	LOG_INFO("Send hello packet to ");
@@ -121,7 +125,7 @@ void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, 
 	packet = createPacket(HELLO, UNRELIABLE, "response", "testpayload");
 	}
 	LOG_INFO_6ADDR(destAddr);
-      	LOG_INFO_("\n");
+    LOG_INFO_("\n");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -189,14 +193,14 @@ void publish(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAdd
 	}
 	
 }
-
+/* Return an acknowledge after publish of a value */ 
 void pubACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	struct Packet packet;
 	packet = createPacket(PUBACK, UNRELIABLE,  "", "");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
-/* Transfer an information/command (method for the broker) */
+/* Transfer an information/command (method for the broker) to the server */
 void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, bool command, char *topicname, char *value){
 	struct Packet packet;
 	if(command){
@@ -209,7 +213,7 @@ void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, 
 }
 
 
-/* Return an acknowledge when the information/command is received */
+/* Return an acknowledge when the information/command is received to the server */
 void pushACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	struct Packet packet;
 	packet = createPacket(PUSHACK, UNRELIABLE,  "", "");
@@ -235,30 +239,26 @@ void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAdd
 	sendPacket(packet, udp_conn,destAddr); 
 }
 
+/* declaration of the process wait_ping_process */
 PROCESS(wait_ping_process, "WAIT client"); 
 
-	//bool ackRcv;
-	//int ackTypeWanted;
-	struct simple_udp_connection *udp_connPing;
-	uip_ipaddr_t destAddrPing;
-	struct Packet packetAck;
-	int countPing;
-
+struct simple_udp_connection *udp_connPing;
+uip_ipaddr_t destAddrPing;
+struct Packet packetAck;
+int countPing;
+/**
+ * This thread (wait_ping_process)  ping each 10 second the destination ping address.
+ * It stop and disconnect the mote after 5 pings without ping response.
+ */
 PROCESS_THREAD(wait_ping_process, ev, data){
 	PROCESS_BEGIN(); 
-	 countPing = 0;
-	//const struct PingReq *pingReq =  data;
-	 //const struct PingReq pingReqs = *pingReq;
-	//const uip_ipaddr_t *sender_addr = &(pingReqs.dest_ipaddr);
+	countPing = 0;
 	LOG_INFO("PING wait_ping_process " );
 	LOG_INFO_6ADDR(&destAddrPing); 
 	LOG_INFO("\n"); 	
 	static struct etimer timer;
-	
-	//pingreq(udp_connPing,  &destAddrPing);
-	etimer_set(&timer, CLOCK_SECOND*10); //Ping each 10 seconds
-	//pingreq(&udp_conn,  sender_addr);
-	
+
+	etimer_set(&timer, CLOCK_SECOND*10); //Ping each 10 seconds 
   	
   	while(1 && countPing < 5){
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer)); 
@@ -273,22 +273,24 @@ PROCESS_THREAD(wait_ping_process, ev, data){
 	}
 	disconnect(udp_connPing, &destAddrPing);
   	PROCESS_END();
-
-
 } 
 
-void startPingThread(struct simple_udp_connection *udp_conn,	const uip_ipaddr_t *destAddr){
+/* Start the thread wait_ping_process  */
+void startPingThread(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	udp_connPing = udp_conn;
 	destAddrPing = *destAddr;
 	LOG_INFO("Ping should be to " );
-		LOG_INFO_6ADDR(&destAddrPing); 
-		LOG_INFO("\n"); 
+	LOG_INFO_6ADDR(&destAddrPing); 
+	LOG_INFO("\n"); 
 	process_start(&wait_ping_process,NULL);//START/RESTART PROCESS PING
 }
 
+/* Stop the thread wait_ping_process */
 void stopPingThread(){
 	process_exit(&wait_ping_process); //STOP PROCESS PING
 }
+
+/* Getter of isConnected value. */
 bool isConnected(){
 	return connected;
 }
@@ -296,7 +298,11 @@ bool isConnected(){
 
 int TOPICSIZE = 1;
 struct Topic topics[1]; 
-
+/**
+ * Handle the message from his type :
+ * ( HELLO , PUBLISH, SUBSCRIBE, DISCONNECT, PUBACK, CONNECT, CONNACK, SUBACK, UNSUB, UNSUBACK, PINGREQ, PINGRESP, PUSH, PUSHACK)
+ * then it manage the folowing procedure. 
+ */
 void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	int msgType = getMessageType(packetRcv);
   	LOG_INFO("Received msg with MessageType = %i\n",msgType);
