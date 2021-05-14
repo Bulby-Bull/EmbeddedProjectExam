@@ -1,5 +1,3 @@
-//to compile with gcc use this : gcc -o control controlserv.c -lpthread
-
 #include <stdio.h>
 #include <stdlib.h>
 //#include "structureapp.h"
@@ -26,7 +24,7 @@ static const uint8_t udpFrom[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00
 
 static const uint8_t udpRemote[16] = { 0xbb, 0xbb,0x00, 0x00,0x00, 0x00,0x00, 0x00, 0xc3, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
 
-int launch = 0;
+
 //////////////////////
 
 
@@ -50,7 +48,51 @@ void clear(){
 * Set an UDP connection and send a packet to the border router
 **/
 void sendUDP(struct Packet packet) {
-    printf("SEND UDP\n");
+    int sockfd;
+    char buffer[MAXLINE];
+    char *hello = "Hello from client";
+    struct sockaddr_in6     servaddr;
+    struct sockaddr_in6     fromaddr;
+
+    // Creating socket file descriptor
+    if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin6_family = AF_INET6;
+    servaddr.sin6_port = htons(PORT);
+    //servaddr.sin_addr.s_addr = INADDR_ANY;
+    memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
+
+
+    fromaddr.sin6_family = AF_INET6;
+    fromaddr.sin6_port = htons(FROMPORT);
+    //servaddr.sin_addr.s_addr = INADDR_ANY;
+    memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
+    bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
+    connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
+
+    int n, len;
+
+    while(1){
+        //sendto(sockfd, &packet, sizeof(packet),
+          //     MSG_CONFIRM, (const struct sockaddr *) &servaddr,
+            //   sizeof(servaddr));
+        //printf("Hello message sent.\n");
+        //ipv6_expander(&servaddr.sin6_addr);
+    
+
+    n = recvfrom(sockfd, (struct Packet*)buffer, MAXLINE,
+                 MSG_WAITALL, (struct sockaddr *) &servaddr,
+                 &len);
+    buffer[n] = '\0';
+    printf("Server : %s\n", buffer);
+    }
+    close(sockfd);
 }
 
 
@@ -58,13 +100,12 @@ void sendUDP(struct Packet packet) {
 /**
 * Set an UDP connection and send a packet to the border router
 **/
-void handleReceiverUDP()
-{ 
+void receiveUDP() {
  int sock;
    int status;
    struct sockaddr_in6 sin6;
    int sin6len;
-   struct Packet* buffer;
+   struct Packet* buffer = (struct Packet*) malloc(sizeof(struct Packet));
 
    sock = socket(PF_INET6, SOCK_DGRAM,0);
 
@@ -83,31 +124,25 @@ void handleReceiverUDP()
      perror("bind"), exit(1);
 
    status = getsockname(sock, (struct sockaddr *)&sin6, &sin6len);
-
-   printf("%d\n", ntohs(sin6.sin6_port));
+printf("%d\n", ntohs(sin6.sin6_port));
+   printf("Ip is  :  ");
+   ipv6_expander(&sin6.sin6_addr);
+   printf("\n");
+   
    while(1){
    status = recvfrom(sock, buffer, MAXLINE, 0, 
                      (struct sockaddr *)&sin6, &sin6len);
-   printf("test\n");
-   struct Packet packetRcv;
-    packetRcv = *buffer;
-   printf("Message received messagetype = %i \n", packetRcv.header.mst );
-
+   printf("test \n");
    printf("From ip :  ");
    ipv6_expander(&sin6.sin6_addr);
    printf("\n");
-   // if(packetRcv.header.mst==0){
-   //  printf("Send packet");
-   //  packetRcv = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
-   //  sendto(sock, &packetRcv, sizeof(packetRcv),MSG_CONFIRM, (const struct sockaddr *) &sin6, sizeof(sin6));
-
-   // }
+   struct Packet packetRcv;
+   printf("is good size = %i\n",sizeof(buffer) );
+    packetRcv = *buffer;
+    printf("not good\n");
+   printf("Message received messagetype = %i \n", packetRcv.header.mst );
    handleMessage(packetRcv,sock,sin6);
    }
-   printf("test2\n");
-   printf("test3\n");
-   printf("test4\n");
-   printf("test5\n");
 
    close(sock);
    printf("close socket\n");
@@ -275,7 +310,7 @@ void callGazSensor() {
     printf("--------------------------------------- \n");
     printf("Enter to return in the main menu... \n");
     printf("--------------------------------------- \n");
-    //system("pause");
+    system("pause");
 }
 
 /**
@@ -290,82 +325,75 @@ void callAlarm() {
     printf("--------------------------------------- \n");
     printf("Enter to return in the main menu... \n");
     printf("--------------------------------------- \n");
-    //system("pause");
+    system("pause");
 }
 
 void *handleReceiver(void *vargp)
 {
-    printf("Je reçois des packets \n");
+    receiveUDP();
 
     return NULL;
 }
 
-void *welcomeMessages(void *vargp){
+void *messages(void * arg){
+       int launch = 0;
+
     printf("Welcome to the Control Server \n \n");
     while(launch == 0){
-//         int response = 0;
-//         response = callMenu();
-//         switch(response){
-//             case 1:
-//                 callLight();
-//                 break;
-//             case 2:
-//                 callWasher();
-//                 break;
-//             case 3:
-//                 callGazSensor();
-//                 clear();
-//                 break;
-//             case 4:
-//                 callAlarm();
-//                 clear();
-//                 break;
-//             case 5:
-//                 printf("---------------------- \n");
-//                 printf("End of program \n");
-//                 printf("---------------------- \n");
-//                 for(int i = 0 ; i < 4; i++){//Sleep 500ms*4
-// //                     printf(".");
-// // #ifdef _WIN32 //For windows
-// //                     Sleep(500);
-// // #else //For linux
-// //                     usleep(500000);
-// // #endif
-//                 }
-//                 launch = 1;
-//                 break;
-//             default:
-//                 printf("---------------------------------------- \n");
-//                 printf("Pliz enter a number between 1 and 5 \n");
-//                 printf("---------------------------------------- \n \n");
-//                 break;
-//         }
-        
-        printf("sleep a bit\n");
-        sleep(5);
+        int response = 0;
+        response = callMenu();
+        switch(response){
+            case 1:
+                callLight();
+                break;
+            case 2:
+                callWasher();
+                break;
+            case 3:
+                callGazSensor();
+                clear();
+                break;
+            case 4:
+                callAlarm();
+                clear();
+                break;
+            case 5:
+                printf("---------------------- \n");
+                printf("End of program \n");
+                printf("---------------------- \n");
+                for(int i = 0 ; i < 4; i++){//Sleep 500ms*4
+                    printf(".");
+#ifdef _WIN32 //For windows
+                    Sleep(500);
+#else //For linux
+                    usleep(500000);
+#endif
+                }
+                launch = 1;
+                break;
+            default:
+                printf("---------------------------------------- \n");
+                printf("Pliz enter a number between 1 and 5 \n");
+                printf("---------------------------------------- \n \n");
+                break;
+        }
     }
-
 }
 
 int main() {
 
     
+   
+   
+    
+    printf("back in main");
+    
     //thread created to handle received packet from the border router
-    //pthread_t thread_id;
-   // pthread_t thread_id2;
-    
-   // pthread_create(&thread_id, NULL, handleReceiverUDP, NULL);
-  // pthread_create(&thread_id2, NULL, welcomeMessages, NULL);
-    
-     //pthread_join(thread_id,NULL);
-     handleReceiverUDP();
-     //pthread_join(thread_id2,NULL);
-    
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, messages, NULL);
 
+    receiveUDP();
+    pthread_join(thread_id,NULL);
     
     return 0;
 }
-
-
-
-
