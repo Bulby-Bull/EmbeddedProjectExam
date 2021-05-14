@@ -44,66 +44,16 @@ void clear(){
 
 
 
-/**
-* Set an UDP connection and send a packet to the border router
-**/
-void sendUDP(struct Packet packet) {
-    int sockfd;
-    char buffer[MAXLINE];
-    char *hello = "Hello from client";
-    struct sockaddr_in6     servaddr;
-    struct sockaddr_in6     fromaddr;
-
-    // Creating socket file descriptor
-    if ( (sockfd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0 ) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    memset(&servaddr, 0, sizeof(servaddr));
-
-    // Filling server information
-    servaddr.sin6_family = AF_INET6;
-    servaddr.sin6_port = htons(PORT);
-    //servaddr.sin_addr.s_addr = INADDR_ANY;
-    memcpy(servaddr.sin6_addr.s6_addr, udpRemote, sizeof udpRemote);
-
-
-    fromaddr.sin6_family = AF_INET6;
-    fromaddr.sin6_port = htons(FROMPORT);
-    //servaddr.sin_addr.s_addr = INADDR_ANY;
-    memcpy(fromaddr.sin6_addr.s6_addr, udpFrom, sizeof udpFrom);
-    bind(sockfd, (struct sockaddr *) &fromaddr, sizeof fromaddr);
-    connect(sockfd,(struct sockaddr *) &servaddr, sizeof servaddr);
-
-    int n, len;
-
-    while(!launch){
-        //sendto(sockfd, &packet, sizeof(packet),
-          //     MSG_CONFIRM, (const struct sockaddr *) &servaddr,
-            //   sizeof(servaddr));
-        //printf("Hello message sent.\n");
-        //ipv6_expander(&servaddr.sin6_addr);
-    
-
-    n = recvfrom(sockfd, (struct Packet*)buffer, MAXLINE,
-                 MSG_WAITALL, (struct sockaddr *) &servaddr,
-                 &len);
-    buffer[n] = '\0';
-    printf("Server : %s\n", buffer);
-    }
-    close(sockfd);
-}
-
-
+int sock;
+struct sockaddr_in6 sin6;
 
 /**
 * Set an UDP connection and send a packet to the border router
 **/
 void receiveUDP() {
- int sock;
+ 
    int status;
-   struct sockaddr_in6 sin6;
+   
    int sin6len;
    struct Packet* buffer = (struct Packet*) malloc(sizeof(struct Packet));
 
@@ -136,6 +86,7 @@ printf("%d\n", ntohs(sin6.sin6_port));
    printf("From ip :  ");
    ipv6_expander(&sin6.sin6_addr);
    printf("\n");
+   printf("Payload in buffer = %s\n", buffer->payload );
    struct Packet packetRcv;
    printf("is good size = %i\n",sizeof(buffer) );
     packetRcv = *buffer;
@@ -179,7 +130,7 @@ void sendCommandToLight(int result) {
         //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "ON");
-        sendUDP(packet);
+        publishTo(packet,sock,sin6);
 
     }
     else if (result == 2) {
@@ -189,7 +140,7 @@ void sendCommandToLight(int result) {
         //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Light", "OFF");
-        sendUDP(packet);
+        publishTo(packet,sock,sin6);
     }
 }
 
@@ -242,7 +193,7 @@ void sendCommandToWasher(int result) {
         //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "ON");
-        sendUDP(packet);
+        publishTo(packet,sock,sin6);
     }
     else if (result == 2) {
         printf("----------------------------------- \n");
@@ -251,7 +202,7 @@ void sendCommandToWasher(int result) {
         //Todo send packet in UDP to the server
         struct Packet packet;
         packet = createPacket(PUBLISH, RELIABLE, 0, 0, "Washer", "OFF");
-        sendUDP(packet);
+        publishTo(packet,sock,sin6);
     }
 }
 
@@ -328,12 +279,6 @@ void callAlarm() {
     system("pause");
 }
 
-void *handleReceiver(void *vargp)
-{
-    receiveUDP();
-
-    return NULL;
-}
 
 void *messages(void * arg){
       

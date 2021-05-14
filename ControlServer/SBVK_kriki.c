@@ -21,7 +21,10 @@ static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned i
 	
 	struct Packet packet;
 	packet.header = header;
-	strcpy(packet.payload, payload);
+	char modifPayload[50];
+	strcat(modifPayload, "  ");
+	strcat(modifPayload, payload);
+	strcpy(packet.payload, modifPayload);
 	
 	return packet;
 }
@@ -150,8 +153,28 @@ void pingresp(int sock, struct  sockaddr_in6 dest_addr){
 	sendPacket(sock, packet,dest_addr);
 }
 
- int TOPICSIZE = 1;
-struct Topic topics[1]; 
+ int TOPICSIZE = 10;
+struct Topic topics[10]; 
+
+void publishTo(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_addr){
+	for (int i = 0; i <=10; ++i)
+			{
+				//If the topic is not null
+				if( topics[i].name != NULL ){
+					//If the topic correspond to the published topic
+					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
+						//Send to all ip a push
+						for (int j = 0; j <= 1; ++j)
+						{
+
+							push(sock, topics[i].ips[j] , packetRcv.header.qos , packetRcv.header.headerOption , packetRcv.payload );
+						}
+					}
+				}
+			}
+}
+
+
 
 static unsigned count =0;
 
@@ -165,7 +188,8 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
 
   	int i;
   	int j;
-
+  	printf("HeaderOption%s\n", packetRcv.header.headerOption );
+  	printf("Payload = %s\n",packetRcv.payload );
   	if(!ackRcv && msgType == ackTypeWanted){
   	 	ackRcv=true;
   	 }
@@ -197,6 +221,7 @@ void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_ad
 						//Send to all ip a push
 						for (j = 0; j <= 1; ++j)
 						{
+
 							push(sock, topics[i].ips[j] , packetRcv.header.qos , packetRcv.header.headerOption , packetRcv.payload );
 						}
 					}
