@@ -30,6 +30,16 @@ static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned i
 	return packet;
 }
 
+char* pushedINFO;
+bool fresh = 0;
+
+char* getPushedINFO(){
+	if(fresh){
+		fresh = 1;
+		return pushedINFO;
+	}
+	return NULL;
+}
 
 
 	bool ackRcv;
@@ -279,21 +289,6 @@ void stopPingThread(){
 }
 bool isConnected(){
 	return connected;
-}
-
-char* pushedINFO;
-char* emptyINFO;
-
-bool fresh = 0;
-
-char* getPushedINFO(){
-	if(fresh){
-		LOG_INFO("SU data is %s \n", pushedINFO);
-		fresh = 1;
-		return pushedINFO;
-	}else{
-		return emptyINFO;
-	}
 }
 
 static unsigned count =0;

@@ -42,24 +42,17 @@ udp_rx_callback(struct simple_udp_connection *c,
     struct Packet packetRcv;
     packetRcv = *received_struct_ptr;
     handleMessage(packetRcv,&udp_conn,sender_addr);
-
     char* pushedINFO = getPushedINFO();
-
     if(pushedINFO != NULL ){
-      
-      LOG_INFO_("SU ALARM %s \n",pushedINFO);
-
       if(atoi(pushedINFO) >=10){
-        LOG_INFO_("SU ALARM ON ! \n");
+        LOG_INFO_("SU ALARM OONONONONONONN ! \n");
       }
     }
-    //If value >10 SAY ALARM ON !
 
 #if LLSEC802154_CONF_ENABLED
   LOG_INFO_(" LLSEC LV:%d", uipbuf_get_attr(UIPBUF_ATTR_LLSEC_LEVEL));
 #endif
   LOG_INFO_("\n");
-  
   
 
 }
