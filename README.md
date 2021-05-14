@@ -32,9 +32,10 @@ present in the ControlServer directory.
 We developed the protocol, the devices, the broker and the control server implementation in C code. All code is available in other directories
 
 ## Compilation
-To compile the control server and the broker, we have to execute this following command: *gcc -o control controlserv.c SBVK_broker.c -lpthread*.
+To compile the control server and the broker, we have to execute this following command: *gcc -o control controlserv.c -lpthread*.
 
-All structures specific to our protocol are declared in the header file called "structure.h" and "structureapp.h". 
+All structures specific to our protocol are declared in the header file called "structure.h" and "structureapp.h" and the "SBVK_broker.c"
+is include into the "BrokerAndControlServer.c" file. 
 
 
 
