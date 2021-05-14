@@ -15,17 +15,18 @@
 bool connected=false;
 
 /* Create a packet in function of the command (push, connect, ...) */
-static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
+static struct Packet createPacket(unsigned int mst, unsigned int rel, char* headerOption, char* payload){
 	struct Header header;
 	header.mst = mst;
-	header.qos = qos;
-	header.rl = rl;
-	header.test = test;
+	header.rel = rel;
 	strcpy(header.headerOption, headerOption);
 	
 	struct Packet packet;
 	packet.header = header;
-	strcpy(packet.payload, payload);
+	char modifPayload[50];
+	strcat(modifPayload, "  ");
+	strcat(modifPayload, payload);
+	strcpy(packet.payload, modifPayload);
 	
 	return packet;
 }
@@ -79,7 +80,7 @@ PROCESS_THREAD(ackThread, ev, data)
 
 int qosThread(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	udp_connAck = udp_conn;
-	LOG_INFO("Change qos addresse to : ");
+	LOG_INFO("Change reliable addresse to : ");
 	    	LOG_INFO_6ADDR(destAddr);
       		LOG_INFO_("\n");
       	packetAck = packet;
@@ -91,11 +92,12 @@ int qosThread(struct Packet packet, struct simple_udp_connection *udp_conn,const
 
 /* Send a packet to a device or a broker, called by connect, connACK, push, ... */
 static int sendPacket(struct Packet packet, struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
-	if(packet.header.qos){
+	if(packet.header.rel){
 		ackRcv = false;
 		ackTypeWanted = packet.header.mst+1;
 		qosThread(packet, udp_conn, destAddr);
 	}
+	LOG_INFO("Packet is send ");
 	simple_udp_sendto(udp_conn,&packet,  sizeof(packet),destAddr);
 	return 0;
 }
@@ -113,10 +115,10 @@ void hello(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr, 
 	struct Packet packet;
 	if (init){
 	LOG_INFO("Send hello packet to ");
-	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
+	packet = createPacket(HELLO, UNRELIABLE,  "init", "123456789100000000");
 	}else{
 	LOG_INFO("Send response hello packet to ");
-	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "response", "testpayload");
+	packet = createPacket(HELLO, UNRELIABLE, "response", "testpayload");
 	}
 	LOG_INFO_6ADDR(destAddr);
       	LOG_INFO_("\n");
@@ -128,7 +130,7 @@ void connect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 	LOG_INFO("Send connect packet to ");
 	LOG_INFO_6ADDR(destAddr);
       	LOG_INFO_("\n");
-	struct Packet packet = createPacket(CONNECT, RELIABLE, 0, 0, "CONNECT", "testpayload");
+	struct Packet packet = createPacket(CONNECT, RELIABLE,  "CONNECT", "testpayload");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -137,7 +139,7 @@ void connACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 	LOG_INFO("Send connack packet to ");
 	LOG_INFO_6ADDR(destAddr);
       	LOG_INFO_("\n");
-	struct Packet packet = createPacket(CONNACK, UNRELIABLE, 0, 0, "CONNACK", "testpayload");
+	struct Packet packet = createPacket(CONNACK, UNRELIABLE,  "CONNACK", "testpayload");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -146,7 +148,7 @@ void disconnect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destA
     LOG_INFO("Send disconnect packet to ");
     LOG_INFO_6ADDR(destAddr);
     LOG_INFO("\n");
-    struct Packet packet = createPacket(DISCONNECT, UNRELIABLE, 0, 0, "DISCONNECT", "testpayload");
+    struct Packet packet = createPacket(DISCONNECT, UNRELIABLE,  "DISCONNECT", "testpayload");
     sendPacket(packet, udp_conn,destAddr);
 
 }
@@ -154,14 +156,14 @@ void disconnect(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destA
 /* Subscribe to a topic */
 void subscribe(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, char *topicname){
 	struct Packet packet;
-	packet = createPacket(SUBSCRIBE, RELIABLE, 0, 0, topicname ,"");
+	packet = createPacket(SUBSCRIBE, RELIABLE,  topicname ,"");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
 /* Return an acknowledge after subscription to a topic */
 void subACK(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr){
 	struct Packet packet;
-	packet = createPacket(SUBACK, UNRELIABLE, 0, 0, "", "");
+	packet = createPacket(SUBACK, UNRELIABLE,  "", "");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -179,10 +181,10 @@ void unSUBACK(){
 void publish(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, bool command, char *topicname, char *value){
 	struct Packet packet;
 	if(command){
-		packet = createPacket(PUBLISH, RELIABLE, 0, 0, topicname, value);
+		packet = createPacket(PUBLISH, RELIABLE,  topicname, value);
 		sendPacket(packet, udp_conn,destAddr);
 	}else{
-		packet = createPacket(PUBLISH, UNRELIABLE, 0, 0, topicname, value);
+		packet = createPacket(PUBLISH, UNRELIABLE,  topicname, value);
 		sendPacket(packet, udp_conn,destAddr);
 	}
 	
@@ -190,7 +192,7 @@ void publish(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAdd
 
 void pubACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	struct Packet packet;
-	packet = createPacket(PUBACK, UNRELIABLE, 0, 0, "", "");
+	packet = createPacket(PUBACK, UNRELIABLE,  "", "");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -198,10 +200,10 @@ void pubACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr
 void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, bool command, char *topicname, char *value){
 	struct Packet packet;
 	if(command){
-		packet = createPacket(PUSH, RELIABLE, 0, 0, topicname, value);
+		packet = createPacket(PUSH, RELIABLE,  topicname, value);
 		sendPacket(packet, udp_conn,destAddr);
 	}else{
-		packet = createPacket(PUSH, UNRELIABLE, 0, 0, topicname, value);
+		packet = createPacket(PUSH, UNRELIABLE,  topicname, value);
 		sendPacket(packet, udp_conn,destAddr);
 	}
 }
@@ -210,7 +212,7 @@ void push(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr, 
 /* Return an acknowledge when the information/command is received */
 void pushACK(struct simple_udp_connection *udp_conn, const uip_ipaddr_t *destAddr){
 	struct Packet packet;
-	packet = createPacket(PUSHACK, UNRELIABLE, 0, 0, "", "");
+	packet = createPacket(PUSHACK, UNRELIABLE,  "", "");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -219,7 +221,7 @@ void pingreq(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAddr
 	LOG_INFO("Send pingreq packet to ");
 	LOG_INFO_6ADDR(destAddr);
       	LOG_INFO_("\n");
-	struct Packet packet = createPacket(PINGREQ, UNRELIABLE, 0, 0, "PINGREQ", "testPayload");
+	struct Packet packet = createPacket(PINGREQ, UNRELIABLE,  "PINGREQ", "testPayload");
 	sendPacket(packet, udp_conn,destAddr);
 }
 
@@ -229,7 +231,7 @@ void pingresp(struct simple_udp_connection *udp_conn,const uip_ipaddr_t *destAdd
 	LOG_INFO("Send pingresp packet to ");
 	LOG_INFO_6ADDR(destAddr);
       	LOG_INFO_("\n");
-	struct Packet packet = createPacket(PINGRESP, UNRELIABLE, 0, 0, "PINGRESP", "pingRespTestPayload");
+	struct Packet packet = createPacket(PINGRESP, UNRELIABLE,  "PINGRESP", "pingRespTestPayload");
 	sendPacket(packet, udp_conn,destAddr); 
 }
 
@@ -291,7 +293,7 @@ bool isConnected(){
 	return connected;
 }
 
-static unsigned count =0;
+
 int TOPICSIZE = 1;
 struct Topic topics[1]; 
 
@@ -323,7 +325,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			break;
 		case PUBLISH:
 			//If the publish is in the reliable mode, send puback
-			if(packetRcv.header.qos == 1) {
+			if(packetRcv.header.rel == 1) {
 				LOG_INFO("SUPUBLISH received \n");
 				LOG_INFO("PUBACK is sending... \n");
 				pubACK(udp_conn,destAddr);
@@ -344,7 +346,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 						//Send to all ip a push
 						for (j = 0; j <= 1; ++j)
 						{
-							push(udp_conn , &topics[i].ips[j] , packetRcv.header.qos , packetRcv.header.headerOption , packetRcv.payload );
+							push(udp_conn , &topics[i].ips[j] , packetRcv.header.rel , packetRcv.header.headerOption , packetRcv.payload );
 						}
 					}
 				}
@@ -352,7 +354,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			break;
 		case SUBSCRIBE:
 
-			LOG_INFO("SU00 SUBSCRIBE received \n");
+			LOG_INFO("SU00 SUBSCRIBE received... \n");
 
 			LOG_INFO("SU01 le topic est %s \n", packetRcv.header.headerOption);
 
@@ -403,7 +405,7 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 				}
 			}
 
-			LOG_INFO("SUBACK is sending... \n");
+			LOG_INFO("SUBACK is sending \n");
 			subACK(udp_conn,destAddr);
 
 			//sendPacket();
@@ -415,13 +417,10 @@ void handleMessage(struct Packet packetRcv,struct simple_udp_connection *udp_con
 			LOG_INFO("SUPUBACK received \n");
 			break;
 		case CONNECT://PUBACK();
-			if(count<3){
-			LOG_INFO("Connect received but wait for reliability connack count = %i\n",count);
-			count++;
-			}else{
+			
 			LOG_INFO("Connect received response with connack\n");
 			connACK(udp_conn,destAddr);
-			}
+			
 			break;
 		case CONNACK://connect(data, datalen);
 			connected = true;

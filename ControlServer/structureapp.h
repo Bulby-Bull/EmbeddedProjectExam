@@ -12,9 +12,7 @@ enum QOS { UNRELIABLE = 0, RELIABLE = 1};
 struct Header
 {
     unsigned int mst : 4;
-    unsigned int qos : 1;
-    unsigned int rl: 8;
-    unsigned int test: 3;
+    unsigned int rel : 1;
     char headerOption[20];
 };
 

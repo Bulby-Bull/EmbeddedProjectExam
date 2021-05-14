@@ -1,82 +1,88 @@
-#include "structure.h"
-#include "sys/log.h"
-#include "random.h"
+#include "structureapp.h"
 #include <sys/socket.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <unistd.h>
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_INFO
 bool connected=false;
 
 /* Create a packet in function of the command (push, connect, ...) */
-static struct Packet createPacket(unsigned int mst, unsigned int qos, unsigned int rl, unsigned int test, char* headerOption, char* payload){
+static struct Packet createPacket(unsigned int mst, unsigned int rel, char* headerOption, char* payload){
 	struct Header header;
 	header.mst = mst;
-	header.qos = qos;
-	header.rl = rl;
-	header.test = test;
+	header.rel = rel;
 	strcpy(header.headerOption, headerOption);
 	
 	struct Packet packet;
 	packet.header = header;
-	strcpy(packet.payload, payload);
+	char modifPayload[50];
+	strcat(modifPayload, "  ");
+	strcat(modifPayload, payload);
+	strcpy(packet.payload, modifPayload);
 	
 	return packet;
 }
 
 
+void ipv6_expander(const struct in6_addr * addr) {
+    char str[40];
+    sprintf(str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            (int)addr->s6_addr[0], (int)addr->s6_addr[1],
+            (int)addr->s6_addr[2], (int)addr->s6_addr[3],
+            (int)addr->s6_addr[4], (int)addr->s6_addr[5],
+            (int)addr->s6_addr[6], (int)addr->s6_addr[7],
+            (int)addr->s6_addr[8], (int)addr->s6_addr[9],
+            (int)addr->s6_addr[10], (int)addr->s6_addr[11],
+            (int)addr->s6_addr[12], (int)addr->s6_addr[13],
+            (int)addr->s6_addr[14], (int)addr->s6_addr[15]);
+    printf("Ipv6 addr = %s \n", str);
 
-// 	bool ackRcv;
-// 	int ackTypeWanted;
-// 	struct simple_udp_connection *udp_connAck;
-// 	uip_ipaddr_t destAddrAck;
-// 	struct Packet packetAck;
-	
-// #define SEND_INTERVAL		  (5 * CLOCK_SECOND)
-// PROCESS(ackThread, "Check ack");
-// PROCESS_THREAD(ackThread, ev, data)
-// 	{
-// 	  static struct etimer periodic_timer;
-// 	  //static unsigned count;
-// 	  //const uip_ipaddr_t *destAddrCast = data;
-// 	  PROCESS_BEGIN();
-// 	  etimer_set(&periodic_timer, random_rand() % SEND_INTERVAL);
-// 	  while(1) {
-// 	    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+}
 
-// 	    if(!ackRcv){
-// 	    	simple_udp_sendto(udp_connAck,&packetAck,  sizeof(packetAck),&destAddrAck);
-// 	    }else{
-// 	    	//free(destAddrAck);
-// 	    	PROCESS_EXIT();
-// 	    }
+	bool ackRcv;
+	int ackTypeWanted;
+	int sockAck;
+	struct sockaddr_in6 destAddrAck;
+	struct Packet packetAck;
 
-// 	    /* Add some jitter */
-// 	    etimer_set(&periodic_timer, SEND_INTERVAL
-// 	      - CLOCK_SECOND + (random_rand() % (2 * CLOCK_SECOND)));
-// 	  }
+void* threadAck(void *arg){
+	while(1){
+		sleep(3); //Wait 3 seconds
+		if(!ackRcv){
+		sendto(sockAck, &packetAck, sizeof(packetAck),MSG_CONFIRM, ( struct sockaddr *) &destAddrAck, sizeof(destAddrAck));
+		}
+		else{
+			pthread_exit(NULL);
+		}
+	}
+}
 
-//   	PROCESS_END();
-// 	}
+pthread_t thread_id;
 
-
-
-int qosThread(struct Packet packet){
-	// udp_connAck = udp_conn;
- //      	packetAck = packet;
-	// destAddrAck = *destAddr;
+int qosThread(int sock,struct Packet packet, struct  sockaddr_in6 dest_addr){
+ 	packetAck = packet;
+	destAddrAck = dest_addr;
+	sockAck = sock;
 	// process_start(&ackThread, &destAddr);
 	
+    pthread_create(&thread_id, NULL, threadAck, NULL);
+    //pthread_join(thread_id,NULL);
 	return 0;
 }
 
 /* Send a packet to a device or a broker, called by connect, connACK, push, ... */
-static int sendPacket(int sock, struct Packet packet, sockaddr *dest_addr){
-	// if(packet.header.qos){
-	// 	ackRcv = false;
-	// 	ackTypeWanted = packet.header.mst+1;
-	// 	qosThread(packet, udp_conn, destAddr);
-	// }
-	sendto(sock, &packetRcv, sizeof(packetRcv),MSG_CONFIRM, (const struct sockaddr *) &dest_addr, sizeof(sin6));
+int sendPacket(int sock, struct Packet packet, struct  sockaddr_in6 dest_addr){
+	 if(packet.header.rel){
+	 	ackRcv = false;
+	 	ackTypeWanted = packet.header.mst+1;
+	 	qosThread(sock,packet, dest_addr);
+	 }
+	printf("send packet to");
+	sendto(sock, &packet, sizeof(packet),MSG_CONFIRM, ( struct sockaddr *) &dest_addr, sizeof(dest_addr));
 
 	//simple_udp_sendto(udp_conn,&packet,  sizeof(packet),destAddr);
 	return 0;
@@ -88,112 +94,121 @@ static int sendPacket(int sock, struct Packet packet, sockaddr *dest_addr){
 }
 
 /* Initiate a connection to a remote device or broker */
-void hello(int sock, sockaddr *dest_addr, bool init){
+void hello(int sock, struct  sockaddr_in6 dest_addr, bool init){
 	
-	
+	printf("send hello2\n");
 	struct Packet packet;
 	if (init){
-	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "init", "testpayload");
+	packet = createPacket(HELLO, UNRELIABLE, "init", "testpayload");
 	}else{
-	packet = createPacket(HELLO, UNRELIABLE, 0, 0, "response", "testpayload");
+	packet = createPacket(HELLO, UNRELIABLE, "response", "testpayload");
 	}
-	sendPacket(sock, packet,destAddr);
+	printf("send hello3\n");
+	sendPacket(sock, packet,dest_addr);
+	printf("send hello 4\n");
 }
 
 /* Initiate a connection to a remote device or broker */
-void connect(int sock, sockaddr *dest_addr, bool init){
-	struct Packet packet = createPacket(CONNECT, RELIABLE, 0, 0, "CONNECT", "testpayload");
-	sendPacket(sock, packet,destAddr);
+void sendConnect(int sock, struct  sockaddr_in6 dest_addr){
+	struct Packet packet = createPacket(CONNECT, RELIABLE, "CONNECT", "testpayload");
+	sendPacket(sock, packet,dest_addr);
 }
 
 /* Return an acknowledge after a CONNECTION paquet */
-void connACK(int sock, sockaddr *dest_addr){
-	struct Packet packet = createPacket(CONNACK, UNRELIABLE, 0, 0, "CONNACK", "testpayload");
-	sendPacket(sock, packet,destAddr);
+void connACK(int sock, struct  sockaddr_in6 dest_addr){
+	struct Packet packet = createPacket(CONNACK, UNRELIABLE,  "CONNACK", "testpayload");
+	sendPacket(sock, packet,dest_addr);
 }
 
 /* Return an acknowledge after subscription to a topic */
-void subACK(int sock, sockaddr *dest_addr){
+void subACK(int sock, struct  sockaddr_in6 dest_addr){
 	struct Packet packet;
-	packet = createPacket(SUBACK, UNRELIABLE, 0, 0, "", "");
-	sendPacket(sock, packet,destAddr);
-}
- 
-/* Return an acknowledge after unsubscription to a topic */
-void unSUBACK(){
-	//sendPacket();
+	packet = createPacket(SUBACK, UNRELIABLE,  "", "");
+	sendPacket(sock, packet,dest_addr);
 }
 
-
-void pubACK(int sock, sockaddr *dest_addr){
+void pubACK(int sock, struct  sockaddr_in6 dest_addr){
 	struct Packet packet;
-	packet = createPacket(PUBACK, UNRELIABLE, 0, 0, "", "");
-	sendPacket(sock, packet,destAddr);
+	packet = createPacket(PUBACK, UNRELIABLE,  "", "");
+	sendPacket(sock, packet,dest_addr);
 }
 
 /* Transfer an information/command (method for the broker) */
-void push(int sock, sockaddr *dest_addr,bool command, char *topicname, char *value){
+void push(int sock, struct  sockaddr_in6 dest_addr, bool command, char *topicname, char *value){
 	struct Packet packet;
 	if(command){
-		packet = createPacket(PUSH, RELIABLE, 0, 0, topicname, value);
-		sendPacket(sock, packet,destAddr);
+		packet = createPacket(PUSH, RELIABLE,  topicname, value);
+		sendPacket(sock, packet,dest_addr);
 	}else{
-		packet = createPacket(PUSH, UNRELIABLE, 0, 0, topicname, value);
-		sendPacket(sock, packet,destAddr);
+		packet = createPacket(PUSH, UNRELIABLE,  topicname, value);
+		sendPacket(sock, packet,dest_addr);
 	}
 }
 
-
-/*---------------------------------------------------------------------------*/
-
-/*---------------------------------------------------------------------------*/
-
-
-
 /* Respond to a ping */
-void pingresp(int sock, sockaddr *dest_addr){
-	struct Packet packet = createPacket(PINGRESP, UNRELIABLE, 0, 0, "PINGRESP", "pingRespTestPayload");
-	sendPacket(sock, packet,destAddr);
+void pingresp(int sock, struct  sockaddr_in6 dest_addr){
+	struct Packet packet = createPacket(PINGRESP, UNRELIABLE,  "PINGRESP", "pingRespTestPayload");
+	sendPacket(sock, packet,dest_addr);
 }
 
- 
-int TOPICSIZE = 1;
-struct Topic topics[1]; 
+ int TOPICSIZE = 10;
+struct Topic topics[10]; 
+
+void publishTo(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_addr){
+	for (int i = 0; i <=10; ++i)
+			{
+				//If the topic is not null
+				if( topics[i].name != NULL ){
+					//If the topic correspond to the published topic
+					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
+						//Send to all ip a push
+						for (int j = 0; j <= 1; ++j)
+						{
+
+							push(sock, topics[i].ips[j] , packetRcv.header.rel , packetRcv.header.headerOption , packetRcv.payload );
+						}
+					}
+				}
+			}
+}
+
+
 
 static unsigned count =0;
 
-void handleMessage(struct Packet packetRcv,int sock, sockaddr *dest_addr){
+void handleMessage(struct Packet packetRcv,int sock,struct  sockaddr_in6 dest_addr){
+	
 	int msgType = getMessageType(packetRcv);
-  	
+  	printf("handleMessage %i \n", msgType);
   	bool exist = 0;
   	bool created = 0;
   	struct Topic tp;
 
   	int i;
   	int j;
-
+  	printf("HeaderOption%s\n", packetRcv.header.headerOption );
+  	printf("Payload = %s\n",packetRcv.payload );
   	if(!ackRcv && msgType == ackTypeWanted){
-  		ackRcv=true;
-  	}
+  	 	ackRcv=true;
+  	 }
+  	printf("Before switch \n");
 	switch (msgType){
 		case HELLO:
+			printf("send hello\n");
 			if(strcmp(packetRcv.header.headerOption ,"init")==0) {
-				hello(sock,destAddr,0);
+				hello(sock,dest_addr,0);
 			}else{
-				connect(sock,destAddr);
+				sendConnect(sock,dest_addr);
 			}
 			
 			break;
 		case PUBLISH:
 			//If the publish is in the reliable mode, send puback
-			if(packetRcv.header.qos == 1) {
-				pubACK(sock,destAddr);
+			if(packetRcv.header.rel == 1) {
+				
+				pubACK(sock,dest_addr);
 			}
-			else{
-				//PUBLISH received received, NOT ACK
-			}
-			//TODO Envoyer aux subscribers avec un push 
-
+			
 			//Loop between all topics
 			for (i = 0; i <=1; ++i)
 			{
@@ -204,26 +219,26 @@ void handleMessage(struct Packet packetRcv,int sock, sockaddr *dest_addr){
 						//Send to all ip a push
 						for (j = 0; j <= 1; ++j)
 						{
-							push(sock ,destAddr, &topics[i].ips[j] , packetRcv.header.qos , packetRcv.header.headerOption , packetRcv.payload );
+
+							push(sock, topics[i].ips[j] , packetRcv.header.rel , packetRcv.header.headerOption , packetRcv.payload );
 						}
 					}
 				}
 			}
 			break;
 		case CONNECT://PUBACK();
-			if(count<3){
-				count++;
-			}else{
-			connACK(sock,destAddr);
-			}
+			// if(count<3){
+			// 	count++;
+			// }else{
+			connACK(sock,dest_addr);
+			// }
 			break;
 		case SUBSCRIBE:
-
 			//Loop for the topics
 			for(i=0 ; i <= TOPICSIZE ; ++i){
 				//if the topic is not null
 				if( topics[i].name != NULL ){
-					//if the topic math the received topic
+					//if the topic match the received topic
 					if( ! strcmp(topics[i].name , packetRcv.header.headerOption ) ){
 						//Mark the topic as existing
 						exist = 1;
@@ -235,9 +250,7 @@ void handleMessage(struct Packet packetRcv,int sock, sockaddr *dest_addr){
 							//if an ip slot is empty
 							if( &topics[i].ips[j] == NULL ){
 								//We write the ip of the sbscriber
-								
-								topics[i].ips[j] = *destAddr;
-								
+								topics[i].ips[j] = dest_addr;
 							}
 						}
 					}
@@ -249,32 +262,18 @@ void handleMessage(struct Packet packetRcv,int sock, sockaddr *dest_addr){
 				for(i=0 ; i <= TOPICSIZE ; ++i){
 					if( topics[i].name == NULL && created == 0){
 						created = 1;
-
 						tp.name = packetRcv.header.headerOption;
-						
-						tp.ips[0] = *destAddr;
-
+						tp.ips[0] = dest_addr;
 						topics[i] = tp;
-
-		
 					}
 				}
 			}
-
-			
-			subACK(sock,destAddr);
+			subACK(sock,dest_addr);
 
 			//sendPacket();
 			break;
-		case PINGREQ://ping();
-			
-			pingresp(sock,destAddr);
-			break;
-		case DISCONNECT://disconnect();
-			connected = false;
-			break;	
-		case PUSHACK:
-			
+case PINGREQ://ping();
+			pingresp(sock,dest_addr);
 			break;
 		default:
 			

@@ -1,8 +1,0 @@
-static void getMessageType(unsigned char type, const uint8_t * data);
-static uip_ipaddr_t connect(const uint8_t *, uint16_t, uint16_t datalen);
-static void disconnect();
-static void send();
-static void receive();
-static void subscribe();
-static void publish(struct simple_udp_connection * udp_conn, const uip_ipaddr_t * dest_ipaddr, const char * topic, const char * value);
-static void ping();
