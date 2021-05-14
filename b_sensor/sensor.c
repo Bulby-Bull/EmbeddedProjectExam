@@ -83,14 +83,11 @@ PROCESS_THREAD(udp_client_process, ev, data)
       LOG_INFO_("\n");
       hello(&udp_conn,&dest_ipaddr,1);
 
-      subscribe(&udp_conn, &dest_ipaddr, "Light");
-
       }else{
       	startPingThread(&udp_conn,&dest_ipaddr);
 
-        publish(&udp_conn, &dest_ipaddr, 1 , "Light" , "ON");
-
-        publish(&udp_conn, &dest_ipaddr, 1 , "Light" , "OFF");
+        LOG_INFO("SU I publish topic TEMP with value 21 ");
+        publish(&udp_conn, &dest_ipaddr, 1 , "Temp" , "21");
       }
       
 

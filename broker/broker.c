@@ -16,9 +16,6 @@
 static struct simple_udp_connection udp_conn;
 //const uip_ipaddr_t *iptest;
 
-
-
-
 static void
 udp_rx_callback(struct simple_udp_connection *c,
          const uip_ipaddr_t *sender_addr,
@@ -28,7 +25,6 @@ udp_rx_callback(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  LOG_INFO("Received request from ");
   LOG_INFO_6ADDR(sender_addr);
   LOG_INFO_("\n");
   struct Packet* received_struct_ptr;
